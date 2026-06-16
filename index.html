@@ -298,7 +298,7 @@
                     </div>
                 </div>
 
-                <!-- NEW! 20 FAQs Accordion Section -->
+                <!-- 20 FAQs Accordion Section -->
                 <div id="result-faq" class="hidden bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4">
                     <div class="border-b border-slate-100 pb-3">
                         <h3 class="text-sm font-extrabold text-slate-800 flex items-center">
@@ -308,8 +308,6 @@
                     </div>
 
                     <div class="space-y-3" id="faq-accordion-container">
-                        <!-- FAQ Items (Total 20) -->
-                        
                         <!-- FAQ 1 -->
                         <div class="border-b border-slate-100 pb-3">
                             <button onclick="toggleQA('qa-1')" class="w-full flex justify-between items-center text-left py-2 font-bold text-slate-800 text-xs sm:text-sm hover:text-emerald-600 transition duration-200">
@@ -410,7 +408,7 @@
                                 <p>契約している団信の「特約」の種類によって完全に分かれます。</p>
                                 <ul class="list-disc list-inside space-y-1 pl-1">
                                     <li><strong>一般団信（特約なし）：</strong>基本的に「死亡」または「所定の高度障害状態（両目の失明や両手足の完全麻痺など、極めて重い状態）」になった時のみ、ローン残高が0円になります。</li>
-                                    <li><strong>三大疾病特約・介護特約付き団信：</strong>「がん（所定の診断）」「脳卒中・急性心筋梗塞で所定の制限が継続した時」、または「国の要介護状態（要介護2以上等）が180日以上継続した時」など、より広い範囲でローンが免除されます。</li>
+                                    <li><strong>三大疾病特約・介護特約付き団信：</strong>「がん（所定 of の診断）」「脳卒中・急性心筋梗塞で所定の制限が継続した時」、または「国の要介護状態（要介護2以上等）が180日以上継続した時」など、より広い範囲でローンが免除されます。</li>
                                 </ul>
                                 <p>要介護や軽度の障害、うつ病等による休職では、一般団信は適用されずローン返済が続きます。ご自身の住宅ローンがどのような休職・介護特約に対応しているか、一度必ず契約書（金消契約）を確認しましょう。</p>
                             </div>
@@ -569,7 +567,7 @@
                             </button>
                             <div id="qa-18" class="hidden mt-2 text-xs text-slate-500 leading-relaxed pl-1 space-y-2">
                                 <p><strong>結論から言えば、国が滅びない限り、日本の公的年金制度が「破綻（もらえる額が完全に0円になること）」することは物理的にあり得ません。</strong></p>
-                                <p>なぜなら、公的年金制度は「集めた保険料」だけで回しているのではなく、支払われる年金原資の<strong>「半分（50%）は国庫負担（国の税金）」</strong>で賄われており、さらに世界最大級の年金積立金（GPIF）の運用益もあるためです。少子高齢化によって「もらえる開始年齢が上がる」「給付水準が1〜2割下がる」といったダウンサイジングは確実に起き続けますが、万が一障害を負った時や亡くなった時の保障として、民間保険会社とは比較にならない国レベルの強固な永続性を持っています。</p>
+                                <p>なぜなら、公的年金制度は「集めた保険料」だけで回しているのではなく、支払われる年金原資の<strong>「半分（50%）は国庫負担（国の税金）」</strong>で賄われており、さらに世界最大級 of 年金積立金（GPIF）の運用益もあるためです。少子高齢化によって「もらえる開始年齢が上がる」「給付水準が1〜2割下がる」といったダウンサイジングは確実に起き続けますが、万が一障害を負った時や亡くなった時の保障として、民間保険会社とは比較にならない国レベルの強固な永続性を持っています。</p>
                             </div>
                         </div>
 
@@ -852,6 +850,39 @@
         function triggerPending() {
             state.isPending = true;
             document.getElementById('pending-alert').style.display = 'flex';
+        }
+
+        // Helper to format age range strings dynamically with clear subjects
+        function getDynamicAgeRangeText(seg, userAge) {
+            const startElapsed = seg.startAge - userAge;
+            const endElapsed = seg.endAge - userAge;
+
+            if (state.scenario === 'disability') {
+                // Disability Scenario (高度障害) -> Subject is "You" (あなた)
+                if (seg.startAge >= 65) {
+                    return `あなたが 65歳〜生涯`;
+                }
+                return `あなたが ${seg.startAge}歳〜${seg.endAge}歳`;
+            } else {
+                // Death Scenario (死亡) -> Subject is Spouse or Children
+                if (state.hasSpouse) {
+                    const spouseStart = state.spouseAge + startElapsed;
+                    const spouseEnd = state.spouseAge + endElapsed;
+                    if (spouseStart >= 65) {
+                        return `配偶者が 65歳〜生涯`;
+                    }
+                    return `配偶者が ${spouseStart}歳〜${spouseEnd}歳`;
+                } else if (state.childrenCount > 0) {
+                    const child1Start = state.childrenAges[0] + startElapsed;
+                    const child1End = state.childrenAges[0] + endElapsed;
+                    if (child1Start >= 18) {
+                        return `お子様が 18歳（高校卒業）以降`;
+                    }
+                    return `お子様が ${child1Start}歳〜${child1End}歳`;
+                } else {
+                    return `万が一の発生から ${startElapsed}年目〜${endElapsed}年目`;
+                }
+            }
         }
 
         // --- CORE COMPUTING ENGINE ---
@@ -1160,7 +1191,21 @@
                 chartInstance.destroy();
             }
 
-            const labels = data.map(d => `${d.age}歳`);
+            // DYNAMIC AXIS LABELS: Slip x-axis context entirely based on scenario & hasSpouse status!
+            const labels = data.map(d => {
+                if (state.scenario === 'disability') {
+                    return `${d.age}歳`;
+                } else {
+                    if (state.hasSpouse) {
+                        return `配偶者 ${state.spouseAge + d.yearsElapsed}歳`;
+                    } else if (state.childrenCount > 0) {
+                        return `子 ${state.childrenAges[0] + d.yearsElapsed}歳`;
+                    } else {
+                        return `${d.yearsElapsed}年目`;
+                    }
+                }
+            });
+            
             const inflows = data.map(d => d.inflow);
 
             chartInstance = new Chart(ctx, {
@@ -1219,9 +1264,12 @@
                 const child = parseFloat(seg.breakdownIn.childBenefit.toFixed(1));
                 const total = parseFloat(seg.inflow.toFixed(1));
 
-                // --- WHO IS RECIPIENT? ---
+                // --- CRITICAL VISUAL CHANGE: WHO IS RECIPIENT? ---
                 let recipientBadgeHtml = "";
                 let cardColorBorder = "border-slate-200";
+
+                const startElapsed = seg.startAge - userAge;
+                const spouseAgeAtStage = state.spouseAge + startElapsed;
 
                 if (state.scenario === 'disability') {
                     cardColorBorder = "border-emerald-100 hover:border-emerald-300";
@@ -1233,22 +1281,37 @@
                 } else {
                     cardColorBorder = "border-rose-100 hover:border-rose-300";
                     
-                    if (seg.startAge >= 65) {
+                    if (state.hasSpouse) {
+                        if (spouseAgeAtStage >= 65) {
+                            recipientBadgeHtml = `
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-black bg-rose-100 text-rose-800">
+                                    <i class="fa-solid fa-user mr-1"></i>遺族受給（配偶者老後：${spouseAgeAtStage}歳以降）
+                                </span>
+                            `;
+                        } else if (child > 0) {
+                            recipientBadgeHtml = `
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-black bg-rose-100 text-rose-800">
+                                    <i class="fa-solid fa-people-roof mr-1"></i>遺族受給（配偶者：${spouseAgeAtStage}歳〜 ＋ 子ども）
+                                </span>
+                            `;
+                        } else {
+                            recipientBadgeHtml = `
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-black bg-rose-100 text-rose-800">
+                                    <i class="fa-solid fa-user-check mr-1"></i>遺族受給（配偶者本人：${spouseAgeAtStage}歳〜）
+                                </span>
+                            `;
+                        }
+                    } else if (state.childrenCount > 0) {
+                        const child1AgeAtStage = state.childrenAges[0] + startElapsed;
                         recipientBadgeHtml = `
                             <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-black bg-rose-100 text-rose-800">
-                                <i class="fa-solid fa-user mr-1"></i>遺族受給（配偶者の老後）
-                            </span>
-                        `;
-                    } else if (child > 0) {
-                        recipientBadgeHtml = `
-                            <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-black bg-rose-100 text-rose-800">
-                                <i class="fa-solid fa-people-roof mr-1"></i>遺族受給（配偶者＋子ども）
+                                <i class="fa-solid fa-child mr-1"></i>遺族受給（お子様：${child1AgeAtStage}歳〜）
                             </span>
                         `;
                     } else {
                         recipientBadgeHtml = `
                             <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-black bg-rose-100 text-rose-800">
-                                <i class="fa-solid fa-user-check mr-1"></i>遺族受給（配偶者本人）
+                                <i class="fa-solid fa-ribbon mr-1"></i>受給対象のご遺族
                             </span>
                         `;
                     }
@@ -1295,7 +1358,7 @@
                             </div>
                             <div>
                                 <h4 class="text-xs sm:text-sm font-black text-slate-800">【第${idx+1}期】${getStageTitle(seg, idx)}</h4>
-                                <span class="text-[10px] text-slate-400 font-bold block mt-0.5">${seg.startAge}歳〜${seg.endAge}歳</span>
+                                <span class="text-[10px] text-slate-400 font-bold block mt-0.5">${getDynamicAgeRangeText(seg, userAge)}</span>
                             </div>
                         </div>
                         <div class="text-right">
@@ -1358,6 +1421,7 @@
             const child = seg.breakdownIn.childBenefit;
             const yearsElapsed = seg.startAge - parseInt(document.getElementById('user-age').value);
             const name = document.getElementById('user-name').value || 'あなた';
+            const spouseAgeAtStage = state.spouseAge + yearsElapsed;
 
             if (state.scenario === 'disability') {
                 if (idx === 0 && yearsElapsed === 0) {
@@ -1385,12 +1449,11 @@
                 }
                 if (seg.startAge >= 65) {
                     if (state.job === 'solo') {
-                        return `65歳以降は「障害基礎年金（月額 ${basic}万円）」のみを<strong>${name}さん本人</strong>が生涯にわたり受け取ります。自営業者にとって、現役時代からの貯蓄切り崩しが重要になる時期です。`;
+                        return `65歳以降は子ども手当が完全に終了し、国からの「障害基礎年金（月額 ${basic}万円）」のみを<strong>${name}さん本人</strong>が生涯にわたり受け取ります。自営業者にとって、現役時代からの貯蓄切り崩しが重要になる時期です。`;
                     } else {
                         return `65歳以降はシニア向けの生涯受給へと移行します。現役時代から上乗せされていた「障害厚生年金（月額 ${extra}万円）」は、一生涯変わらず<strong>${name}さん本人</strong>に支給され続け、老後の生活を確実に守ります。`;
                     }
                 }
-                // No children or children became independent (default return for midlife)
                 if (state.childrenCount > 0) {
                     return `子どもが18歳を越えて独立したあとの期間です。各種加算や児童手当は終了し、ご自身を支えるベースの障害年金（月額 ${seg.inflow}万円）が<strong>${name}さん本人</strong>に生涯支給されます。`;
                 } else {
@@ -1412,13 +1475,12 @@
                 }
                 if (state.gender === 'male' && state.hasSpouse && extra > 4.0) {
                     if (state.childrenCount > 0) {
-                        return `子どもが高校を卒業したため、遺族基礎年金や児童手当は終了します。しかし、<strong>遺された妻</strong>が40歳以上65歳未満の期間であるため、遺族厚生年金に自動的に<strong>『中高齢寡婦加算（月額5.1万円）』</strong>が加算され、急激な世帯収入 of の減少から妻の生活を守ります。`;
+                        return `子どもが高校を卒業したため、遺族基礎年金や児童手当は終了します。しかし、<strong>遺された妻（現在${spouseAgeAtStage}歳）</strong>が40歳以上65歳未満の期間であるため、遺族厚生年金に自動的に<strong>『中高齢寡婦加算（月額5.1万円）』</strong>が加算され、急激な世帯収入の減少から妻の生活を守ります。`;
                     } else {
-                        return `お子様がいらっしゃらない（またはすでに独立している）ため国の遺族基礎年金はありませんが、<strong>遺された妻</strong>が40歳以上65歳未満の期間であるため、遺族厚生年金に自動的に<strong>『中高齢寡婦加算（月額5.1万円）』</strong>が加算され、国が妻の生活をしっかりとサポートします。`;
+                        return `お子様がいらっしゃらない（またはすでに独立している）ため国の遺族基礎年金はありませんが、<strong>遺された妻（現在${spouseAgeAtStage}歳）</strong>が40歳以上65歳未満の期間であるため、遺族厚生年金に自動的に<strong>『中高齢寡婦加算（月額5.1万円）』</strong>が加算され、国が妻の生活をしっかりとサポートします。`;
                     }
                 }
                 
-                // Default return (Midlife period without special additions)
                 if (state.childrenCount > 0) {
                     return `子どもが高校を卒業し、<strong>残された配偶者（パートナー）</strong>へ、旦那様が遺してくれた厚生年金（月額 ${seg.inflow}万円）のみが支給される期間です。`;
                 } else {
