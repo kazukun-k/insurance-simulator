@@ -1,0 +1,1601 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>もしもの公的保障スピードシミュレーター</title>
+    <!-- Tailwind CSS for Modern & Responsive UI -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js for beautiful charts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- KaTeX for beautiful math equations -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700;900&display=swap');
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            background-color: #f8fafc;
+        }
+    </style>
+</head>
+<body class="text-slate-800 antialiased min-h-screen flex flex-col">
+
+    <!-- Header Navigation -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 py-3 sm:px-6 lg:px-8 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <div class="bg-emerald-600 text-white p-2 rounded-xl shadow-md shadow-emerald-200">
+                    <i class="fa-solid fa-hand-holding-dollar text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="text-base sm:text-lg font-bold text-slate-900 leading-tight">公的保障ライフステージシミュレーター</h1>
+                    <p class="text-[10px] sm:text-xs text-slate-500">家族の成長による受給額の変化（段差）を完全自動で細分化</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-2">
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
+                    <span class="w-1.5 h-1.5 mr-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    2026年最新法改正対応
+                </span>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-7xl mx-auto w-full px-4 py-6 sm:px-6 lg:px-8">
+        
+        <!-- Pending State Warning -->
+        <div id="pending-alert" class="mb-6 bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start space-x-3 shadow-sm">
+            <i class="fa-solid fa-circle-exclamation text-amber-500 mt-0.5 text-lg"></i>
+            <div class="flex-1">
+                <h4 class="text-sm font-bold text-amber-900">条件が変更されました</h4>
+                <p class="text-xs text-amber-700 mt-0.5">最新の受給金額を再計算するには、下部の「シミュレーションを実行する」ボタンを押してください。</p>
+            </div>
+            <button onclick="scrollToCalculate()" class="text-xs font-bold text-amber-900 bg-amber-200/60 hover:bg-amber-200 px-3 py-1.5 rounded-lg transition">
+                計算ボタンへ移動 <i class="fa-solid fa-arrow-down ml-1"></i>
+            </button>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            
+            <!-- Left Panel: Input Fields -->
+            <section class="lg:col-span-5 bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-6">
+                <div class="border-b border-slate-100 pb-4 flex justify-between items-center">
+                    <div>
+                        <h2 class="text-md sm:text-lg font-bold text-slate-900 flex items-center">
+                            <i class="fa-solid fa-sliders text-emerald-600 mr-2"></i>シミュレーション条件
+                        </h2>
+                        <p class="text-xs text-slate-400 mt-1">公的支援の計算に必要な項目を設定します</p>
+                    </div>
+                </div>
+
+                <!-- Step 1: Persona Basic info -->
+                <div class="space-y-4">
+                    <!-- Nickname -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase mb-1.5">ニックネーム</label>
+                        <input type="text" id="user-name" value="あなた" oninput="triggerPending()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all">
+                    </div>
+
+                    <!-- Gender & Age -->
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1.5">あなたの性別</label>
+                            <div class="grid grid-cols-2 gap-2">
+                                <button type="button" onclick="setGender('male')" id="btn-gender-male" class="py-2 text-xs font-semibold rounded-xl border text-center transition-all bg-emerald-50 border-emerald-500 text-emerald-700 shadow-sm">
+                                    <i class="fa-solid fa-mars mr-1"></i>男性
+                                </button>
+                                <button type="button" onclick="setGender('female')" id="btn-gender-female" class="py-2 text-xs font-semibold rounded-xl border text-center transition-all bg-white border-slate-200 text-slate-600 hover:bg-slate-50">
+                                    <i class="fa-solid fa-venus mr-1"></i>女性
+                                </button>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1.5">本人の現在の年齢</label>
+                            <div class="flex items-center space-x-2">
+                                <input type="number" id="user-age" min="20" max="64" value="40" oninput="onUserAgeChange()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                                <span class="text-xs text-slate-500 font-bold">歳</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Employment Type -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5">働き方（もらえる制度の種類が変わります）</label>
+                        <div class="grid grid-cols-3 gap-2">
+                            <button type="button" onclick="setJob('employee')" id="btn-job-employee" class="py-2 px-1 text-[11px] sm:text-xs font-semibold rounded-xl border text-center transition-all bg-emerald-50 border-emerald-500 text-emerald-700 shadow-sm">
+                                会社員・公務員
+                            </button>
+                            <button type="button" onclick="setJob('solo')" id="btn-job-solo" class="py-2 px-1 text-[11px] sm:text-xs font-semibold rounded-xl border text-center transition-all bg-white border-slate-200 text-slate-600 hover:bg-slate-50">
+                                個人事業主
+                            </button>
+                            <button type="button" onclick="setJob('director')" id="btn-job-director" class="py-2 px-1 text-[11px] sm:text-xs font-semibold rounded-xl border text-center transition-all bg-white border-slate-200 text-slate-600 hover:bg-slate-50">
+                                法人役員
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Annual Income (Optional) -->
+                    <div>
+                        <div class="flex justify-between items-center mb-1.5">
+                            <label class="block text-xs font-bold text-slate-700">現在の年収（※厚生年金の計算用・任意）</label>
+                            <span class="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-md font-medium" id="income-badge">空欄時は会社員平均（500万）で設定</span>
+                        </div>
+                        <div class="relative flex items-center">
+                            <input type="number" id="user-income" placeholder="500" oninput="triggerPending()" class="w-full border border-slate-200 rounded-xl pl-3 pr-10 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all">
+                            <span class="absolute right-3 text-xs text-slate-400 font-bold">万円</span>
+                        </div>
+                    </div>
+
+                    <!-- Kosei Pension Months Input -->
+                    <div id="pension-months-container" class="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-2">
+                        <div class="flex justify-between items-center">
+                            <label class="text-xs font-bold text-slate-700 flex items-center">
+                                <i class="fa-solid fa-clock-rotate-left mr-1.5 text-emerald-600"></i>厚生年金の通算加入月数（目安）
+                            </label>
+                            <span class="text-xs font-black text-emerald-600" id="pension-months-display">216ヶ月 (18年)</span>
+                        </div>
+                        <input type="range" id="pension-months" min="0" max="480" value="216" oninput="onPensionMonthsChange()" class="w-full accent-emerald-600">
+                        <p id="pension-months-help" class="text-[9px] text-slate-400 leading-tight">※現在の年齢から自動計算しています。転職等で加入していない期間がある場合、スライダーで減らしてください（25年/300ヶ月未満は自動で「最低保証」が適用されます）。</p>
+                    </div>
+
+                    <!-- Scenario Selector -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5">想定する「万が一」の事象</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button type="button" onclick="setScenario('disability')" id="btn-scen-disability" class="py-2 text-xs font-semibold rounded-xl border text-center transition-all bg-white border-slate-200 text-slate-600 hover:bg-slate-50">
+                                <i class="fa-solid fa-wheelchair mr-1"></i>高度障害・要介護
+                            </button>
+                            <button type="button" onclick="setScenario('death')" id="btn-scen-death" class="py-2 text-xs font-semibold rounded-xl border text-center transition-all bg-emerald-50 border-emerald-500 text-emerald-700 shadow-sm">
+                                <i class="fa-solid fa-ribbon mr-1"></i>死亡（遺族の生活）
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 2: Family Structure -->
+                <div class="border-t border-slate-100 pt-5 space-y-4">
+                    <h3 class="text-xs font-extrabold text-slate-500 tracking-wider uppercase"><i class="fa-solid fa-users mr-1"></i>家族構成の設定</h3>
+                    
+                    <!-- Spouse -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5">配偶者の有無</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button type="button" onclick="setSpouse(true)" id="btn-spouse-yes" class="py-2 text-xs font-semibold rounded-xl border text-center transition-all bg-emerald-50 border-emerald-500 text-emerald-700 shadow-sm">
+                                配偶者あり
+                            </button>
+                            <button type="button" onclick="setSpouse(false)" id="btn-spouse-no" class="py-2 text-xs font-semibold rounded-xl border text-center transition-all bg-white border-slate-200 text-slate-600 hover:bg-slate-50">
+                                なし（単身など）
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Spouse Age -->
+                    <div id="spouse-age-container" class="bg-slate-50 p-3 rounded-xl border border-slate-100 space-y-2">
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs font-bold text-slate-600">配偶者の現在の年齢</span>
+                            <span class="text-xs font-extrabold text-emerald-600" id="spouse-age-display">38歳</span>
+                        </div>
+                        <input type="range" id="spouse-age" min="20" max="65" value="38" oninput="onSpouseAgeChange()" class="w-full accent-emerald-600">
+                    </div>
+
+                    <!-- Children count selector -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5">お子様の人数</label>
+                        <div class="grid grid-cols-4 gap-2">
+                            <button type="button" onclick="setChildrenCount(0)" id="btn-child-0" class="py-2 text-xs font-bold rounded-xl border text-center transition-all bg-white border-slate-200 text-slate-600 hover:bg-slate-50">なし</button>
+                            <button type="button" onclick="setChildrenCount(1)" id="btn-child-1" class="py-2 text-xs font-bold rounded-xl border text-center transition-all bg-emerald-50 border-emerald-500 text-emerald-700">1人</button>
+                            <button type="button" onclick="setChildrenCount(2)" id="btn-child-2" class="py-2 text-xs font-bold rounded-xl border text-center transition-all bg-white border-slate-200 text-slate-600 hover:bg-slate-50">2人</button>
+                            <button type="button" onclick="setChildrenCount(3)" id="btn-child-3" class="py-2 text-xs font-bold rounded-xl border text-center transition-all bg-white border-slate-200 text-slate-600 hover:bg-slate-50">3人</button>
+                        </div>
+                    </div>
+
+                    <!-- Children ages (Dynamic inputs based on count) -->
+                    <div id="children-ages-container" class="hidden bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-3">
+                        <span class="text-xs font-bold text-slate-600 block border-b border-slate-200 pb-1"><i class="fa-solid fa-child mr-1"></i>お子様の現在の年齢</span>
+                        <div id="children-inputs" class="space-y-3">
+                            <!-- Dynamic UI slots -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <div class="pt-2">
+                    <button type="button" onclick="calculateSimulation()" id="btn-submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-sm py-4 rounded-xl shadow-lg shadow-emerald-200 transition-all flex items-center justify-center space-x-2">
+                        <span>シミュレーションを実行する</span>
+                        <i class="fa-solid fa-calculator"></i>
+                    </button>
+                </div>
+            </section>
+
+            <!-- Right Panel: Results -->
+            <section class="lg:col-span-7 space-y-6">
+
+                <!-- Loading State Overlay -->
+                <div id="loading-overlay" class="hidden bg-white/90 border border-slate-200 rounded-2xl p-16 shadow-md flex flex-col items-center justify-center space-y-4">
+                    <div class="w-12 h-12 border-4 border-slate-200 border-t-emerald-600 rounded-full animate-spin"></div>
+                    <p class="text-sm font-bold text-slate-600">給付条件の変化点をミリ秒単位で検索中...</p>
+                </div>
+
+                <!-- Empty state placeholder -->
+                <div id="empty-state" class="bg-white border border-slate-200 rounded-2xl p-10 shadow-sm text-center flex flex-col items-center justify-center space-y-4">
+                    <div class="bg-emerald-50 text-emerald-600 p-5 rounded-full text-2xl">
+                        <i class="fa-solid fa-arrow-left"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-extrabold text-slate-900">「いつ、いくらもらえるか」をクリアに視覚化</h3>
+                        <p class="text-xs text-slate-400 mt-1 max-w-sm mx-auto">左側の基本情報を入力し、「シミュレーションを実行する」ボタンを押すと、家族全員のライフイベントに連動した超精密な公的受給ロードマップが描かれます。</p>
+                    </div>
+                </div>
+
+                <!-- Real-time Family Portrait Header -->
+                <div id="result-header" class="hidden bg-slate-900 text-white rounded-2xl p-5 shadow-sm overflow-hidden relative">
+                    <div class="absolute -right-10 -bottom-10 w-40 h-40 bg-emerald-500/10 rounded-full blur-2xl"></div>
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div class="flex items-center space-x-4">
+                            <div class="bg-white/10 p-3 rounded-xl border border-white/10" id="portrait-avatar-wrapper">
+                                <i class="fa-solid fa-users text-xl text-emerald-400"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-base font-extrabold flex items-center gap-1.5">
+                                    <span id="res-username">あなた</span>さんファミリーの公的サポート
+                                </h3>
+                                <p class="text-xs text-slate-400 mt-1" id="res-profile-desc">40歳 会社員 | 夫婦と子ども1人</p>
+                            </div>
+                        </div>
+                        <div class="bg-emerald-500/20 border border-emerald-500/30 px-3 py-1.5 rounded-lg text-right">
+                            <span class="text-[10px] text-emerald-400 font-bold block">想定年齢</span>
+                            <span class="text-sm font-extrabold text-emerald-300" id="res-target-age">もしも40歳で倒れたら...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recipient Indicator Banner -->
+                <div id="recipient-banner" class="hidden bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex items-center justify-between shadow-sm">
+                    <div class="flex items-center space-x-3">
+                        <div class="text-emerald-700 bg-emerald-100 rounded-full p-2 h-10 w-10 flex items-center justify-center text-lg" id="recipient-banner-icon">
+                            <i class="fa-solid fa-user-shield"></i>
+                        </div>
+                        <div>
+                            <span class="text-[10px] text-emerald-600 font-bold uppercase block tracking-wider">公的お金の主な受取人</span>
+                            <h4 class="text-sm font-black text-slate-900 leading-tight" id="recipient-banner-title">本人が直接受け取ります</h4>
+                        </div>
+                    </div>
+                    <span class="text-[10px] bg-emerald-600 text-white font-black px-2.5 py-1 rounded-full" id="recipient-banner-badge">生計維持サポート</span>
+                </div>
+
+                <!-- Financial Inflow Chart Box -->
+                <div id="result-chart-box" class="hidden bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-sm space-y-4">
+                    <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                        <div>
+                            <h3 class="text-sm font-extrabold text-slate-800 flex items-center">
+                                <i class="fa-solid fa-chart-line text-emerald-600 mr-1.5"></i>年齢別の「月間公的保障・給付金額」
+                            </h3>
+                            <p class="text-[11px] text-slate-400 mt-0.5" id="chart-sub-desc">万が一のあと、ご家族や本人が国から毎月受け取れる金額（万円）</p>
+                        </div>
+                        <div class="flex items-center space-x-3 text-[11px] font-bold">
+                            <span class="flex items-center"><span class="w-3.5 h-1 bg-emerald-500 inline-block mr-1"></span>公的受給月額</span>
+                        </div>
+                    </div>
+
+                    <!-- Canvas of chart -->
+                    <div class="relative h-64 sm:h-72 w-full">
+                        <canvas id="balanceChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Timeline Stages Diagnostics -->
+                <div id="result-timeline" class="hidden space-y-4">
+                    <h3 class="text-xs font-extrabold text-slate-500 tracking-wider uppercase flex items-center">
+                        <i class="fa-solid fa-timeline text-emerald-600 mr-1.5"></i>受給金額の変化タイミング（ライフステージ別全期間）
+                    </h3>
+                    
+                    <!-- Chronological Stage Cards will be injected here -->
+                    <div id="timeline-cards" class="space-y-4">
+                        <!-- Card Template Sample -->
+                    </div>
+                </div>
+
+                <!-- 20 FAQs Accordion Section -->
+                <div id="result-faq" class="hidden bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4">
+                    <div class="border-b border-slate-100 pb-3">
+                        <h3 class="text-sm font-extrabold text-slate-800 flex items-center">
+                            <i class="fa-solid fa-circle-question text-emerald-600 mr-2"></i>お金と万が一のよくある質問（20のQ&A）
+                        </h3>
+                        <p class="text-[11px] text-slate-400 mt-0.5">試算された公的保障を最大に活かすための役立つ知識集（質問をタップして解説を開きます）</p>
+                    </div>
+
+                    <div class="space-y-3" id="faq-accordion-container">
+                        <!-- FAQ 1 -->
+                        <div class="border-b border-slate-100 pb-3">
+                            <button onclick="toggleQA('qa-1')" class="w-full flex justify-between items-center text-left py-2 font-bold text-slate-800 text-xs sm:text-sm hover:text-emerald-600 transition duration-200">
+                                <span class="pr-2">Q1. 介護になったら、どのような費用がどれくらい掛かりますか？</span>
+                                <i class="fa-solid fa-chevron-down text-slate-400 transition-transform duration-200" id="qa-icon-1"></i>
+                            </button>
+                            <div id="qa-1" class="hidden mt-2 text-xs text-slate-500 leading-relaxed pl-1 space-y-2">
+                                <p>介護保険制度が適用されるため、自己負担は1割〜3割に抑えられますが、以下のような費用が発生します。</p>
+                                <ul class="list-disc list-inside space-y-1 pl-1">
+                                    <li><strong>初期費用（一時金）：</strong>手すりの設置や段差解消などの住宅改修、介護用ベッドの購入などで<strong>平均約7.4万円</strong>（※上限20万円までの住宅改修費補助金も利用可能）。</li>
+                                    <li><strong>毎月の費用：</strong>在宅介護の場合はケアプランやヘルパー利用で<strong>平均約4.8万円/月</strong>。施設入所（有料老人ホームや特別養護老人ホーム）の場合は<strong>平均約12.2万円/月</strong>が目安となります。</li>
+                                </ul>
+                                <p class="text-slate-400">（出典：生命保険文化センター「ライフプランニング活動に関する有識者調査」）</p>
+                            </div>
+                        </div>
+
+                        <!-- FAQ 2 -->
+                        <div class="border-b border-slate-100 pb-3">
+                            <button onclick="toggleQA('qa-2')" class="w-full flex justify-between items-center text-left py-2 font-bold text-slate-800 text-xs sm:text-sm hover:text-emerald-600 transition duration-200">
+                                <span class="pr-2">Q2. 子どもの教育費は、幼稚園から大学卒業までトータルでいくら必要ですか？</span>
+                                <i class="fa-solid fa-chevron-down text-slate-400 transition-transform duration-200" id="qa-icon-2"></i>
+                            </button>
+                            <div id="qa-2" class="hidden mt-2 text-xs text-slate-500 leading-relaxed pl-1 space-y-2">
+                                <p>進路（国公立か私立か）によって総額は大きく変動しますが、代表的なトータル目安は以下の通りです。</p>
+                                <ul class="list-disc list-inside space-y-1 pl-1">
+                                    <li><strong>すべて公立（小・中・高）＋国立大学：</strong>トータルで<strong>約800万円</strong>。</li>
+                                    <li><strong>すべて公立（小・中・高）＋私立文系大学：</strong>トータルで<strong>約1,000万円</strong>。</li>
+                                    <li><strong>私立高校 ＋ 私立理系（または薬学・医学）大学：</strong>トータルで<strong>約1,500万円〜2,500万円超</strong>。</li>
+                                </ul>
+                                <p>教育資金の約半分は「高校〜大学の7年間」に集中して発生するため、児童手当（子ども手当）を一切取り崩さずに全額貯蓄しておくだけでも、1人あたり約200万円（大学1〜2年分相当）の強力なベース資金を作ることができます。</p>
+                            </div>
+                        </div>
+
+                        <!-- FAQ 3 -->
+                        <div class="border-b border-slate-100 pb-3">
+                            <button onclick="toggleQA('qa-3')" class="w-full flex justify-between items-center text-left py-2 font-bold text-slate-800 text-xs sm:text-sm hover:text-emerald-600 transition duration-200">
+                                <span class="pr-2">Q3. 最近よく聞く「インフレ（物価上昇）」とは何ですか？年金への影響は？</span>
+                                <i class="fa-solid fa-chevron-down text-slate-400 transition-transform duration-200" id="qa-icon-3"></i>
+                            </button>
+                            <div id="qa-3" class="hidden mt-2 text-xs text-slate-500 leading-relaxed pl-1 space-y-2">
+                                <p>インフレとは、モノやサービスの値段（物価）が上がり続けることで、相対的に「お金の価値」が下がることです（例：今まで100円で買えたジュースが150円に値上がりすると、お金の価値が下がったことになります）。</p>
+                                <p>公的年金には物価変動に応じて受給額を微調整する仕組みがありますが、現役世代の減少に合わせたマクロ経済スライド（年金の伸び率を低く抑える措置）が働くため、<strong>物価の上昇スピードに年金額の増加が追いつかず、実質的な買い物のパワー（実質年金額）が徐々に目減りしていくリスク</strong>があります。だからこそ、国からの年金に依存しすぎず、資産形成（新NISAやiDeCoなど）でインフレ対策を行うことが推奨されます。</p>
+                            </div>
+                        </div>
+
+                        <!-- FAQ 4 -->
+                        <div class="border-b border-slate-100 pb-3">
+                            <button onclick="toggleQA('qa-4')" class="w-full flex justify-between items-center text-left py-2 font-bold text-slate-800 text-xs sm:text-sm hover:text-emerald-600 transition duration-200">
+                                <span class="pr-2">Q4. 万が一他界（死亡）した際、お葬式や整理に一時金としてどれくらい掛かりますか？</span>
+                                <i class="fa-solid fa-chevron-down text-slate-400 transition-transform duration-200" id="qa-icon-4"></i>
+                            </button>
+                            <div id="qa-4" class="hidden mt-2 text-xs text-slate-500 leading-relaxed pl-1 space-y-2">
+                                <p>人が他界した際、公的な遺族年金の受給が始まるまでには約3ヶ月のタイムラグがあります。その間に、以下のまとまった現金手元資金が必要となります。</p>
+                                <ul class="list-disc list-inside space-y-1 pl-1">
+                                    <li><strong>葬儀・お布施・返礼品の費用：</strong>平均で<strong>約110万円〜150万円</strong>（※近年は家族葬などで低価格化していますが、数十万は確実に必要です）。</li>
+                                    <li><strong>墓地・仏壇の購入費用：</strong>新たに購入する場合は<strong>約100万円〜150万円</strong>。</li>
+                                    <li><strong>死後事務手続き・家財整理費：</strong>借家の引き払い等が発生する場合は<strong>約20万円〜50万円</strong>。</li>
+                                </ul>
+                                <p>健康保険から「埋葬料（または葬祭費）」として5万円が支給されますが、事後支給のため、家族が慌てないために「本人の銀行口座とは別の手元預貯金」として<strong>最低でも150万円程度</strong>は常に準備しておくべきです。</p>
+                            </div>
+                        </div>
+
+                        <!-- FAQ 5 -->
+                        <div class="border-b border-slate-100 pb-3">
+                            <button onclick="toggleQA('qa-5')" class="w-full flex justify-between items-center text-left py-2 font-bold text-slate-800 text-xs sm:text-sm hover:text-emerald-600 transition duration-200">
+                                <span class="pr-2">Q5. 単身（独身）で病気や高度障害を負った場合、既婚者との最大の違いは？</span>
+                                <i class="fa-solid fa-chevron-down text-slate-400 transition-transform duration-200" id="qa-icon-5"></i>
+                            </button>
+                            <div id="qa-5" class="hidden mt-2 text-xs text-slate-500 leading-relaxed pl-1 space-y-2">
+                                <p>単身者の場合、公的な保障上限額が既婚者に比べてシビアになります。</p>
+                                <ul class="list-disc list-inside space-y-1 pl-1">
+                                    <li><strong>配偶者や子どもの加算がつかない：</strong>障害基礎年金や障害厚生年金に「配偶者加給年金（約1.9万円/月）」や「子の加算（約1.9万円/月）」がつかないため、支給額はベース部分のみ（月額約7万〜12万円程度）となり低くなります。</li>
+                                    <li><strong>家族による「無償の看病介護」が期待しにくい：</strong>食事や通院の付き添い、日生活の補助を全て外部の介護・福祉サービスに頼る必要があるため、自己負担額が既婚者よりも高額になりやすい傾向にあります。</li>
+                                </ul>
+                                <p>したがって、おひとりの方こそ、働けなくなった時の「就業不能時の生活費の蓄え」や、信頼できる知人への緊急連絡網の確保など、自己防衛の必要性が極めて高いと言えます。</p>
+                            </div>
+                        </div>
+
+                        <!-- FAQ 6 -->
+                        <div class="border-b border-slate-100 pb-3">
+                            <button onclick="toggleQA('qa-6')" class="w-full flex justify-between items-center text-left py-2 font-bold text-slate-800 text-xs sm:text-sm hover:text-emerald-600 transition duration-200">
+                                <span class="pr-2">Q6. 障害年金をもらっている時に、アルバイトなどで少しでも働いたら年金はカットされますか？</span>
+                                <i class="fa-solid fa-chevron-down text-slate-400 transition-transform duration-200" id="qa-icon-6"></i>
+                            </button>
+                            <div id="qa-6" class="hidden mt-2 text-xs text-slate-500 leading-relaxed pl-1 space-y-2">
+                                <p>結論から言うと、<strong>障害基礎年金・障害厚生年金は、原則として働いて収入を得ても年金はカット（減額）されません。</strong>（※老齢年金のように在職老齢年金による支給停止の仕組みはありません）。</p>
+                                <p>ただし、障害の種類（精神疾患など）によっては、「働けるようになった＝障害の程度が軽くなった」と次回の更新審査（1年〜5年ごとの有期認定）の際に判断され、障害等級が下がったり、支給が停止されたりするケースがあります。身体障害（人工関節や内部障害等）で状態が変わらない固定障害の場合は、働いても受給に影響することはありません。</p>
+                            </div>
+                        </div>
+
+                        <!-- FAQ 7 -->
+                        <div class="border-b border-slate-100 pb-3">
+                            <button onclick="toggleQA('qa-7')" class="w-full flex justify-between items-center text-left py-2 font-bold text-slate-800 text-xs sm:text-sm hover:text-emerald-600 transition duration-200">
+                                <span class="pr-2">Q7. 団体信用生命保険（団信）があれば、死亡時だけでなく「介護・障害」でも住宅ローンは0円になりますか？</span>
+                                <i class="fa-solid fa-chevron-down text-slate-400 transition-transform duration-200" id="qa-icon-7"></i>
+                            </button>
+                            <div id="qa-7" class="hidden mt-2 text-xs text-slate-500 leading-relaxed pl-1 space-y-2">
+                                <p>契約している団信の「特約」の種類によって完全に分かれます。</p>
+                                <ul class="list-disc list-inside space-y-1 pl-1">
+                                    <li><strong>一般団信（特約なし）：</strong>基本的に「死亡」または「所定の高度障害状態（両目の失明や両手足の完全麻痺など、極めて重い状態）」になった時のみ、ローン残高が0円になります。</li>
+                                    <li><strong>三大疾病特約・介護特約付き団信：</strong>「がん（所定 of の診断）」「脳卒中・急性心筋梗塞で所定の制限が継続した時」、または「国の要介護状態（要介護2以上等）が180日以上継続した時」など、より広い範囲でローンが免除されます。</li>
+                                </ul>
+                                <p>要介護や軽度の障害、うつ病等による休職では、一般団信は適用されずローン返済が続きます。ご自身の住宅ローンがどのような休職・介護特約に対応しているか、一度必ず契約書（金消契約）を確認しましょう。</p>
+                            </div>
+                        </div>
+
+                        <!-- FAQ 8 -->
+                        <div class="border-b border-slate-100 pb-3">
+                            <button onclick="toggleQA('qa-8')" class="w-full flex justify-between items-center text-left py-2 font-bold text-slate-800 text-xs sm:text-sm hover:text-emerald-600 transition duration-200">
+                                <span class="pr-2">Q8. 高額療養費制度があるなら、民間の「医療保険」は本当に必要ないですか？</span>
+                                <i class="fa-solid fa-chevron-down text-slate-400 transition-transform duration-200" id="qa-icon-8"></i>
+                            </button>
+                            <div id="qa-8" class="hidden mt-2 text-xs text-slate-500 leading-relaxed pl-1 space-y-2">
+                                <p>高額療養費制度があるため、日本の公的保険適用内の医療費自己負担は、年収約500万の方なら「月額約8.5万円（4回目以降は一律4.4万円）」に抑えられます。そのため、数千万円単位の巨額の自己負担医療費が発生することはありません。</p>
+                                <p>しかし、以下の費用は<strong>高額療養費制度の対象外（100%全額自己負担）</strong>になります。</p>
+                                <ul class="list-disc list-inside space-y-1 pl-1">
+                                    <li><strong>差額ベッド代（個室代）：</strong>1日平均5,000円〜1.5万円程度。</li>
+                                    <li><strong>入院中の食事代・リネン代・日用品：</strong>1日一律約1,500円程度。</li>
+                                    <li><strong>先進医療の技術料：</strong>がんの陽子線治療など（平均約300万円）。</li>
+                                </ul>
+                                <p>医療保険はこれら「健康保険が効かない全額自己負担の雑費」や「退院後の通院代・交通費」をカバーするための一時金として、日額5,000円程度の掛け捨てでミニマムに加入するのが最も合理的なバランスです。</p>
+                            </div>
+                        </div>
+
+                        <!-- FAQ 9 -->
+                        <div class="border-b border-slate-100 pb-3">
+                            <button onclick="toggleQA('qa-9')" class="w-full flex justify-between items-center text-left py-2 font-bold text-slate-800 text-xs sm:text-sm hover:text-emerald-600 transition duration-200">
+                                <span class="pr-2">Q9. もし高度障害状態になったら、今契約している民間保険の保険料は払い続けなければいけませんか？</span>
+                                <i class="fa-solid fa-chevron-down text-slate-400 transition-transform duration-200" id="qa-icon-9"></i>
+                            </button>
+                            <div id="qa-9" class="hidden mt-2 text-xs text-slate-500 leading-relaxed pl-1 space-y-2">
+                                <p>多くの民間保険（生命保険やがん保険など）には、<strong>「保険料払込免除特約（または払込免除規定）」</strong>がセットされています。</p>
+                                <p>約款で定められた「所定の高度障害状態」や「三大疾病での所定の状態」に該当し、保険会社の承認を受けると、<strong>以降の保険料の払い込みがすべて免除（0円）され、保障だけがそのまま一生涯または満期まで継続</strong>します。万が一、ご家族が重い病気や要介護状態になった場合は、保険をすぐに解約せず、まず担当者やカスタマーセンターに「保険料の払い込み免除が使えないか」を真っ先に問い合わせるようにしてください。</p>
+                            </div>
+                        </div>
+
+                        <!-- FAQ 10 -->
+                        <div class="border-b border-slate-100 pb-3">
+                            <button onclick="toggleQA('qa-10')" class="w-full flex justify-between items-center text-left py-2 font-bold text-slate-800 text-xs sm:text-sm hover:text-emerald-600 transition duration-200">
+                                <span class="pr-2">Q10. 遺族年金をもらいながら、配偶者が「再婚」した場合、年金はどうなりますか？</span>
+                                <i class="fa-solid fa-chevron-down text-slate-400 transition-transform duration-200" id="qa-icon-10"></i>
+                            </button>
+                            <div id="qa-10" class="hidden mt-2 text-xs text-slate-500 leading-relaxed pl-1 space-y-2">
+                                <p>遺族基礎年金および遺族厚生年金は、受給している本人が<strong>「再婚（※籍を入れない事実婚や同居等、実質的な生計維持関係を含む）」した瞬間に、法律上の受給権が「完全に消滅」</strong>します。以降は1円も受け取ることはできません。これは、新しくできた配偶者によって生計が維持されるようになるため、国のサポートが役目を終えるという判断によるものです。</p>
+                                <p>ただし、お子様が遺族基礎年金の受給権者として残る場合がありますが、配偶者が新しい家族と養子縁組をする場合など、状況に応じて複雑な支給ルールが適用されます。</p>
+                            </div>
+                        </div>
+
+                        <!-- FAQ 11 -->
+                        <div class="border-b border-slate-100 pb-3">
+                            <button onclick="toggleQA('qa-11')" class="w-full flex justify-between items-center text-left py-2 font-bold text-slate-800 text-xs sm:text-sm hover:text-emerald-600 transition duration-200">
+                                <span class="pr-2">Q11. 「うつ病」や「適応障害」などの精神疾患でも、傷病手当金や障害年金はもらえますか？</span>
+                                <i class="fa-solid fa-chevron-down text-slate-400 transition-transform duration-200" id="qa-icon-11"></i>
+                            </button>
+                            <div id="qa-11" class="hidden mt-2 text-xs text-slate-500 leading-relaxed pl-1 space-y-2">
+                                <p><strong>はい、条件を満たしていれば全く問題なく受給できます。</strong></p>
+                                <ul class="list-disc list-inside space-y-1 pl-1">
+                                    <li><strong>傷病手当金：</strong>医師の診断書（労務不能であることの証明）があれば、うつ病や適応障害による休職開始4日目から、最長1年6ヶ月間、確実に支給されます。</li>
+                                    <li><strong>障害年金：</strong>精神疾患のために日常生活や仕事に著しい制限が継続している場合、初診日から1年6ヶ月経過後に、障害等級（1級〜3級）の認定を受けることで障害年金が受給できます。</li>
+                                </ul>
+                                <p>精神疾患による申請は年々増加しており、非常に身近なセーフティネットとなっています。一人で悩まず、社会保険労務士（社労士）や、心療内科のソーシャルワーカーに早めに相談しましょう。</p>
+                            </div>
+                        </div>
+
+                        <!-- FAQ 12 -->
+                        <div class="border-b border-slate-100 pb-3">
+                            <button onclick="toggleQA('qa-12')" class="w-full flex justify-between items-center text-left py-2 font-bold text-slate-800 text-xs sm:text-sm hover:text-emerald-600 transition duration-200">
+                                <span class="pr-2">Q12. 障害年金や遺族年金には「税金（所得税や住民税）」はかかりますか？確定申告は？</span>
+                                <i class="fa-solid fa-chevron-down text-slate-400 transition-transform duration-200" id="qa-icon-12"></i>
+                            </button>
+                            <div id="qa-12" class="hidden mt-2 text-xs text-slate-500 leading-relaxed pl-1 space-y-2">
+                                <p>日本の税法上、<strong>障害年金（基礎・厚生）および遺族年金（基礎・厚生）は、全額が「完全非課税」です。</strong>所得税や住民税は1円もかかりません。</p>
+                                <p>また、これらの年金収入は「非課税所得」となるため、所得金額としてカウントされず、<strong>税金計算のための確定申告をする必要もありません。</strong></p>
+                                <p>さらに嬉しいメリットとして、ご家族の税金計算上、あなたを「扶養」に入れるための所得制限（年間103万〜150万円の壁）の判定からも完全に除外されます。そのため、年金を満額もらいながら、税金上の手厚い扶養メリット（配偶者控除等）を家族がフルに受け続けることができます。</p>
+                            </div>
+                        </div>
+
+                        <!-- FAQ 13 -->
+                        <div class="border-b border-slate-100 pb-3">
+                            <button onclick="toggleQA('qa-13')" class="w-full flex justify-between items-center text-left py-2 font-bold text-slate-800 text-xs sm:text-sm hover:text-emerald-600 transition duration-200">
+                                <span class="pr-2">Q13. 「中高齢寡婦加算」は、夫を亡くしたすべての妻がもらえるのですか？</span>
+                                <i class="fa-solid fa-chevron-down text-slate-400 transition-transform duration-200" id="qa-icon-13"></i>
+                            </button>
+                            <div id="qa-13" class="hidden mt-2 text-xs text-slate-500 leading-relaxed pl-1 space-y-2">
+                                <p>受給するためには、以下の条件をすべて同時に満たしている必要があります。</p>
+                                <ul class="list-disc list-inside space-y-1 pl-1">
+                                    <li>亡くなった夫が、<strong>厚生年金に原則として20年以上（長期要件）</strong>加入していたこと（または今回の休職・他界により短期要件をクリアした会社員であること）。</li>
+                                    <li>夫が死亡した時点で、<strong>妻の年齢が40歳以上65歳未満</strong>であること。</li>
+                                    <li>あるいは、40歳未満の時に他界した場合でも、子どもが18歳を過ぎて「遺族基礎年金」が終了した時点で、妻が40歳以上65歳未満に達していること。</li>
+                                </ul>
+                                <p>※「妻が死亡し、夫が遺された場合（男性遺族）」には、中高齢寡婦加算の仕組みはありません。国が女性遺族の生計の厳しさを配慮して作った、女性優遇の制度となっています。</p>
+                            </div>
+                        </div>
+
+                        <!-- FAQ 14 -->
+                        <div class="border-b border-slate-100 pb-3">
+                            <button onclick="toggleQA('qa-14')" class="w-full flex justify-between items-center text-left py-2 font-bold text-slate-800 text-xs sm:text-sm hover:text-emerald-600 transition duration-200">
+                                <span class="pr-2">Q14. 離婚した場合、将来もらえる遺族厚生年金の権利はどうなりますか？年金分割は？</span>
+                                <i class="fa-solid fa-chevron-down text-slate-400 transition-transform duration-200" id="qa-icon-14"></i>
+                            </button>
+                            <div id="qa-14" class="hidden mt-2 text-xs text-slate-500 leading-relaxed pl-1 space-y-2">
+                                <p>離婚手続きをした時点で、お互いの法的な配偶者としての関係が消滅するため、<strong>元配偶者が死亡した際の「遺族厚生年金」を受け取る権利は一切なくなります。</strong></p>
+                                <p>なお、離婚時に行う「年金分割」は、婚姻期間中の厚生年金の保険料納付実績を2人で分け合い、<strong>将来自分自身がもらう『老齢厚生年金』の額を増やす制度</strong>です。元パートナーが亡くなった時の遺族年金がもらえるわけではありませんので、混同しないように注意しましょう。</p>
+                            </div>
+                        </div>
+
+                        <!-- FAQ 15 -->
+                        <div class="border-b border-slate-100 pb-3">
+                            <button onclick="toggleQA('qa-15')" class="w-full flex justify-between items-center text-left py-2 font-bold text-slate-800 text-xs sm:text-sm hover:text-emerald-600 transition duration-200">
+                                <span class="pr-2">Q15. 会社を辞めて無職の期間中に「万が一」が起きた場合、国からの支援は？</span>
+                                <i class="fa-solid fa-chevron-down text-slate-400 transition-transform duration-200" id="qa-icon-15"></i>
+                            </button>
+                            <div id="qa-15" class="hidden mt-2 text-xs text-slate-500 leading-relaxed pl-1 space-y-2">
+                                <p>無職や転職活動中の期間は、原則として「国民年金第1号被保険者」となります。この期間に万が一が発生した場合：</p>
+                                <ul class="list-disc list-inside space-y-1 pl-1">
+                                    <li><strong>障害年金・遺族年金：</strong>「障害基礎年金」や「遺族基礎年金」の対象となります。会社員時代に長年払い込んでいた実績があっても、初診日や死亡日に厚生年金に加入していないため、原則として「障害厚生年金」や「遺族厚生年金」の上乗せは支給されません。</li>
+                                    <li><strong>健康保険：</strong>傷病手当金は会社を退職した時点で受給権を失うため、無職期間中の病気休養に対する傷病手当金はありません。</li>
+                                </ul>
+                                <p>無保険・未加入の「空白期間」を作らないために、退職後はすみやかに「国民年金の切り替え（免除申請）」や「健康保険の任意継続手続き」を14日以内に行うことが非常に重要です。</p>
+                            </div>
+                        </div>
+
+                        <!-- FAQ 16 -->
+                        <div class="border-b border-slate-100 pb-3">
+                            <button onclick="toggleQA('qa-16')" class="w-full flex justify-between items-center text-left py-2 font-bold text-slate-800 text-xs sm:text-sm hover:text-emerald-600 transition duration-200">
+                                <span class="pr-2">Q16. 遺族基礎年金などで言う「子どもが18歳になるまで」とはいつまで？高校中退した場合は？</span>
+                                <i class="fa-solid fa-chevron-down text-slate-400 transition-transform duration-200" id="qa-icon-16"></i>
+                            </button>
+                            <div id="qa-16" class="hidden mt-2 text-xs text-slate-500 leading-relaxed pl-1 space-y-2">
+                                <p>法律上の厳密な定義は、<strong>「18歳に達した日（誕生日の前日）の属する年度の最初の3月31日まで」</strong>です。つまり、高校を卒業する年の「3月分」まで支給が継続します。</p>
+                                <p>これは、子どもが学校に通っているかどうか（学歴）は関係ありません。仮に子どもが高校に籍を置いていない（高校中退した、または進学せずに働いている）場合であっても、<strong>年齢が上記の範囲内であれば問題なく遺族基礎年金や児童手当、障害年金の子の加算は満額支給されます。</strong></p>
+                                <p>※ただし、子どもが結婚（婚姻）した場合は、法的に「独立した世帯」とみなされ、加算の対象から外れることがあります。</p>
+                            </div>
+                        </div>
+
+                        <!-- FAQ 17 -->
+                        <div class="border-b border-slate-100 pb-3">
+                            <button onclick="toggleQA('qa-17')" class="w-full flex justify-between items-center text-left py-2 font-bold text-slate-800 text-xs sm:text-sm hover:text-emerald-600 transition duration-200">
+                                <span class="pr-2">Q17. 個人事業主（自営業）がもしもの病気・障害に備えるなら、まず何から検討すべき？</span>
+                                <i class="fa-solid fa-chevron-down text-slate-400 transition-transform duration-200" id="qa-icon-17"></i>
+                            </button>
+                            <div id="qa-17" class="hidden mt-2 text-xs text-slate-500 leading-relaxed pl-1 space-y-2">
+                                <p>個人事業主には「健康保険の傷病手当金」がなく、さらに障害年金も「障害基礎年金（月約6.8万円のみ）」と非常に手薄です。そのため、以下の順番で防衛策を強化することが推奨されます。</p>
+                                <ul class="list-decimal list-inside space-y-1 pl-1">
+                                    <li><strong>就業不能保険（所得補償保険）：</strong>働けなくなった最初の月から生活費を直接カバーする、最も優先度の高い民間保険です。</li>
+                                    <li><strong>所属する業界団体や小規模企業共済の共済：</strong>会社員でいう退職金代わりの共済制度を利用し、万が一の休廃業時に共済金を受け取れる体制を作ります。</li>
+                                    <li><strong>3ヶ月〜半年分の事業・生活維持費用の確保：</strong>急な休業に慌てないよう、家賃やシステム使用料等の「最低固定費」の半年分は現金でプールしておきましょう。</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <!-- FAQ 18 -->
+                        <div class="border-b border-slate-100 pb-3">
+                            <button onclick="toggleQA('qa-18')" class="w-full flex justify-between items-center text-left py-2 font-bold text-slate-800 text-xs sm:text-sm hover:text-emerald-600 transition duration-200">
+                                <span class="pr-2">Q18. 「日本の公的年金は将来破綻するからあてにならない」と聞きますが、本当ですか？</span>
+                                <i class="fa-solid fa-chevron-down text-slate-400 transition-transform duration-200" id="qa-icon-18"></i>
+                            </button>
+                            <div id="qa-18" class="hidden mt-2 text-xs text-slate-500 leading-relaxed pl-1 space-y-2">
+                                <p><strong>結論から言えば、国が滅びない限り、日本の公的年金制度が「破綻（もらえる額が完全に0円になること）」することは物理的にあり得ません。</strong></p>
+                                <p>なぜなら、公的年金制度は「集めた保険料」だけで回しているのではなく、支払われる年金原資の<strong>「半分（50%）は国庫負担（国の税金）」</strong>で賄われており、さらに世界最大級 of 年金積立金（GPIF）の運用益もあるためです。少子高齢化によって「もらえる開始年齢が上がる」「給付水準が1〜2割下がる」といったダウンサイジングは確実に起き続けますが、万が一障害を負った時や亡くなった時の保障として、民間保険会社とは比較にならない国レベルの強固な永続性を持っています。</p>
+                            </div>
+                        </div>
+
+                        <!-- FAQ 19 -->
+                        <div class="border-b border-slate-100 pb-3">
+                            <button onclick="toggleQA('qa-19')" class="w-full flex justify-between items-center text-left py-2 font-bold text-slate-800 text-xs sm:text-sm hover:text-emerald-600 transition duration-200">
+                                <span class="pr-2">Q19. 年金保険料を未納（滞納）していても、万が一のときに年金はもらえますか？</span>
+                                <i class="fa-solid fa-chevron-down text-slate-400 transition-transform duration-200" id="qa-icon-19"></i>
+                            </button>
+                            <div id="qa-19" class="hidden mt-2 text-xs text-slate-500 leading-relaxed pl-1 space-y-2">
+                                <p><strong>未納や滞納があると、万が一のときに「1円ももらえない（不支給）」となるリスクが極めて高くなります。</strong></p>
+                                <p>障害年金や遺族年金を受け取るためには、以下の「保険料納付要件」のいずれかを満たしている必要があります。</p>
+                                <ul class="list-disc list-inside space-y-1 pl-1">
+                                    <li>原則として、これまでの加入期間の<strong>3分の2以上</strong>の期間で、保険料が正しく納付されているか、免除申請がされていること。</li>
+                                    <li>直近1年間に、未納や滞納期間が全くないこと。</li>
+                                </ul>
+                                <p>どうしても支払いが難しい場合は、絶対に放置せず、市役所の窓口で<strong>「国民年金保険料の免除・猶予申請」</strong>を行ってください。免除申請が国に受理されていれば、未払いであっても「納付要件」をクリアしたことになり、万が一の際には障害年金や遺族年金を100%満額もらう権利が守られます。</p>
+                            </div>
+                        </div>
+
+                        <!-- FAQ 20 -->
+                        <div class="border-b border-slate-100 pb-3">
+                            <button onclick="toggleQA('qa-20')" class="w-full flex justify-between items-center text-left py-2 font-bold text-slate-800 text-xs sm:text-sm hover:text-emerald-600 transition duration-200">
+                                <span class="pr-2">Q20. 国の保障額（シミュレーション結果）だけでは全然足りない場合、まず何から見直すべきですか？</span>
+                                <i class="fa-solid fa-chevron-down text-slate-400 transition-transform duration-200" id="qa-icon-20"></i>
+                            </button>
+                            <div id="qa-20" class="hidden mt-2 text-xs text-slate-500 leading-relaxed pl-1 space-y-2">
+                                <p>民間保険をパニック的に増やす前に、以下の「3つの順番」で家計の基礎体力作りに着手してください。</p>
+                                <ul class="list-decimal list-inside space-y-1.5 pl-1">
+                                    <li><strong>固定費のダウンサイジング：</strong>スマホの格安SIM移行、不要なサブスクや不要な民間特約保険の解約、保険の乗り換えなどで、毎月の支出自体を「3万円〜5万円」減らしましょう。生活に必要な基礎コストを下げることは、万が一の赤字幅を直接小さくする最強の家計防衛です。</li>
+                                    <li><strong>共働きの維持とキャリア継続：</strong>世帯全体の収入源を1本（大黒柱1人）に依存せず、配偶者が細く長く働き続けられる状態を作ることです。配偶者がパートや正社員として働き続けるだけで、国の年金の不足分を完全にカバーできます。</li>
+                                    <li><strong>不足している「差額」だけの掛け捨て保険：</strong>上記で見直しても「子どもが小さいうちの10年間だけ、どうしても月10万円足りない」といった純粋な砂漏れ不足額に対してのみ、掛け捨ての「収入保障保険」や「就業不能保険」をピンポイントで設計・検討しましょう。</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+            </section>
+        </div>
+
+    </main>
+
+    <footer class="bg-white border-t border-slate-200 mt-12 py-6">
+        <div class="max-w-7xl mx-auto px-4 text-center text-xs text-slate-400 space-y-1">
+            <p>© 2026 もしものの公的保障スピードシミュレーター. All Rights Reserved.</p>
+            <p>本ツールの計算ロジックは、国民年金法、厚生年金保険法、健康保険法、及び児童手当法等の規定に基づいて設計されていますが、各世帯の個別の条件（加入期間、保険料納付実績、健康状態、審査等）によって実際の給付とは異なる場合があります。</p>
+        </div>
+    </footer>
+
+    <!-- JavaScript logic -->
+    <script>
+        // --- GLOBAL APP STATE ---
+        let state = {
+            gender: 'male',
+            job: 'employee',
+            scenario: 'death',
+            hasSpouse: true,
+            spouseAge: 38,
+            childrenCount: 1,
+            childrenAges: [5],
+            pensionMonths: 216, // Default initialized based on Age 40 (40 - 22) * 12
+            isPending: false
+        };
+
+        let chartInstance = null;
+
+        // --- INITIALIZATION ---
+        window.onload = function() {
+            renderChildrenInputs();
+            syncPensionMonthsDefault();
+            calculateSimulation(); // Initial auto-run
+        };
+
+        // Sync default pension months based on current age
+        function syncPensionMonthsDefault() {
+            const userAge = parseInt(document.getElementById('user-age').value) || 40;
+            let calculatedMonths = (userAge - 22) * 12;
+            if (calculatedMonths < 12) calculatedMonths = 12;
+            if (calculatedMonths > 480) calculatedMonths = 480;
+            
+            state.pensionMonths = calculatedMonths;
+            
+            const slider = document.getElementById('pension-months');
+            if (slider) {
+                slider.value = calculatedMonths;
+                updatePensionMonthsDisplay(calculatedMonths);
+            }
+        }
+
+        function updatePensionMonthsDisplay(months) {
+            const display = document.getElementById('pension-months-display');
+            if (display) {
+                const years = Math.round((months / 12) * 10) / 10;
+                display.textContent = `${months}ヶ月 (${years}年)`;
+            }
+        }
+
+        // --- BIND INTERACTION EVENT HANDLERS TO WINDOW FOR SCOPE SECURITY ---
+        window.setGender = function(val) {
+            state.gender = val;
+            document.getElementById('btn-gender-male').className = val === 'male' ? 'py-2 text-xs font-semibold rounded-xl border text-center transition-all bg-emerald-50 border-emerald-500 text-emerald-700 shadow-sm' : 'py-2 text-xs font-semibold rounded-xl border text-center transition-all bg-white border-slate-200 text-slate-600 hover:bg-slate-50';
+            document.getElementById('btn-gender-female').className = val === 'female' ? 'py-2 text-xs font-semibold rounded-xl border text-center transition-all bg-emerald-50 border-emerald-500 text-emerald-700 shadow-sm' : 'py-2 text-xs font-semibold rounded-xl border text-center transition-all bg-white border-slate-200 text-slate-600 hover:bg-slate-50';
+            triggerPending();
+        };
+
+        window.setJob = function(val) {
+            state.job = val;
+            const badge = document.getElementById('income-badge');
+            const pensionContainer = document.getElementById('pension-months-container');
+            const pensionHelpText = document.getElementById('pension-months-help');
+
+            if (val === 'employee') {
+                badge.textContent = "未入力時は会社員平均（500万）で計算";
+                pensionContainer.classList.remove('hidden');
+                pensionHelpText.innerHTML = "※現在の年齢から自動計算しています。転職等で加入していない期間がある場合、スライダーで減らしてください（25年/300ヶ月未満は自動で「最低保証」が適用されます）。";
+            } else if (val === 'solo') {
+                badge.textContent = "未入力時は個人事業主平均（350万）で計算";
+                pensionContainer.classList.remove('hidden');
+                pensionHelpText.innerHTML = "※<b>個人事業主の方の過去の厚生年金加入期間</b>を設定してください。国民年金へ移行しているため、死亡時の「みなし300月最低保証」は適用されず、ここの加入月数そのままで計算されます（※障害厚生年金は初診日自営業のため対象外です）。";
+            } else {
+                badge.textContent = "未入力時は役員平均（700万）で計算";
+                pensionContainer.classList.remove('hidden');
+                pensionHelpText.innerHTML = "※現在の年齢から自動計算しています。転職等で加入していない期間がある場合、スライダーで減らしてください（25年/300ヶ月未満は自動で「最低保証」が適用されます）。";
+            }
+            ['employee', 'solo', 'director'].forEach(j => {
+                const btn = document.getElementById(`btn-job-${j}`);
+                if (j === val) {
+                    btn.className = 'py-2 px-1 text-[11px] sm:text-xs font-semibold rounded-xl border text-center transition-all bg-emerald-50 border-emerald-500 text-emerald-700 shadow-sm';
+                } else {
+                    btn.className = 'py-2 px-1 text-[11px] sm:text-xs font-semibold rounded-xl border text-center transition-all bg-white border-slate-200 text-slate-600 hover:bg-slate-50';
+                }
+            });
+            triggerPending();
+        };
+
+        window.setScenario = function(val) {
+            state.scenario = val;
+            document.getElementById('btn-scen-disability').className = val === 'disability' ? 'py-2 text-xs font-semibold rounded-xl border text-center transition-all bg-emerald-50 border-emerald-500 text-emerald-700 shadow-sm' : 'py-2 text-xs font-semibold rounded-xl border text-center transition-all bg-white border-slate-200 text-slate-600 hover:bg-slate-50';
+            document.getElementById('btn-scen-death').className = val === 'death' ? 'py-2 text-xs font-semibold rounded-xl border text-center transition-all bg-emerald-50 border-emerald-500 text-emerald-700 shadow-sm' : 'py-2 text-xs font-semibold rounded-xl border text-center transition-all bg-white border-slate-200 text-slate-600 hover:bg-slate-50';
+            triggerPending();
+        };
+
+        window.setSpouse = function(val) {
+            state.hasSpouse = val;
+            document.getElementById('btn-spouse-yes').className = val ? 'py-2 text-xs font-semibold rounded-xl border text-center transition-all bg-emerald-50 border-emerald-500 text-emerald-700 shadow-sm' : 'py-2 text-xs font-semibold rounded-xl border text-center transition-all bg-white border-slate-200 text-slate-600 hover:bg-slate-50';
+            document.getElementById('btn-spouse-no').className = !val ? 'py-2 text-xs font-semibold rounded-xl border text-center transition-all bg-emerald-50 border-emerald-500 text-emerald-700 shadow-sm' : 'py-2 text-xs font-semibold rounded-xl border text-center transition-all bg-white border-slate-200 text-slate-600 hover:bg-slate-50';
+            
+            const ageContainer = document.getElementById('spouse-age-container');
+            if(val) {
+                ageContainer.classList.remove('hidden');
+            } else {
+                ageContainer.classList.add('hidden');
+            }
+            triggerPending();
+        };
+
+        window.onSpouseAgeChange = function() {
+            const val = parseInt(document.getElementById('spouse-age').value);
+            state.spouseAge = val;
+            document.getElementById('spouse-age-display').textContent = `${val}歳`;
+            triggerPending();
+        };
+
+        window.setChildrenCount = function(val) {
+            state.childrenCount = val;
+            [0, 1, 2, 3].forEach(c => {
+                const btn = document.getElementById(`btn-child-${c}`);
+                if (c === val) {
+                    btn.className = 'py-2 text-xs font-bold rounded-xl border text-center transition-all bg-emerald-50 border-emerald-500 text-emerald-700';
+                } else {
+                    btn.className = 'py-2 text-xs font-bold rounded-xl border text-center transition-all bg-white border-slate-200 text-slate-600 hover:bg-slate-50';
+                }
+            });
+
+            const container = document.getElementById('children-ages-container');
+            if (val > 0) {
+                container.classList.remove('hidden');
+                renderChildrenInputs();
+            } else {
+                container.classList.add('hidden');
+                state.childrenAges = [];
+            }
+            triggerPending();
+        };
+
+        window.onUserAgeChange = function() {
+            syncPensionMonthsDefault();
+            triggerPending();
+        };
+
+        window.onPensionMonthsChange = function() {
+            const val = parseInt(document.getElementById('pension-months').value);
+            state.pensionMonths = val;
+            updatePensionMonthsDisplay(val);
+            triggerPending();
+        };
+
+        window.toggleMathDetails = function(divId) {
+            const block = document.getElementById(divId);
+            if (block) {
+                if (block.classList.contains('hidden')) {
+                    block.classList.remove('hidden');
+                } else {
+                    block.classList.add('hidden');
+                }
+            }
+        };
+
+        // --- FAQ TOGGLE LOGIC ---
+        window.toggleQA = function(id) {
+            const ans = document.getElementById(id);
+            const num = id.split('-')[1];
+            const icon = document.getElementById(`qa-icon-${num}`);
+            
+            if (ans && icon) {
+                if (ans.classList.contains('hidden')) {
+                    ans.classList.remove('hidden');
+                    icon.classList.add('rotate-180');
+                } else {
+                    ans.classList.add('hidden');
+                    icon.classList.remove('rotate-180');
+                }
+            }
+        };
+
+        window.scrollToCalculate = function() {
+            document.getElementById('btn-submit').scrollIntoView({ behavior: 'smooth' });
+        };
+
+        window.calculateSimulation = calculateSimulation;
+
+        function renderChildrenInputs() {
+            const wrapper = document.getElementById('children-inputs');
+            wrapper.innerHTML = '';
+            
+            while(state.childrenAges.length < state.childrenCount) {
+                state.childrenAges.push(5);
+            }
+            state.childrenAges = state.childrenAges.slice(0, state.childrenCount);
+
+            for(let i=0; i<state.childrenCount; i++) {
+                const childDiv = document.createElement('div');
+                childDiv.className = 'flex items-center justify-between bg-white p-2.5 rounded-lg border border-slate-200';
+                
+                const label = document.createElement('span');
+                label.className = 'text-xs font-semibold text-slate-600';
+                label.textContent = `第${i+1}子の年齢`;
+
+                const inputContainer = document.createElement('div');
+                inputContainer.className = 'flex items-center space-x-2';
+
+                const input = document.createElement('input');
+                input.type = 'number';
+                input.min = '0';
+                input.max = '17';
+                input.value = state.childrenAges[i];
+                input.className = 'w-16 border border-slate-200 rounded-lg px-2 py-1 text-xs text-center focus:outline-none focus:ring-1 focus:ring-emerald-500';
+                input.oninput = function() {
+                    let val = parseInt(input.value) || 0;
+                    if(val < 0) val = 0;
+                    if(val > 17) val = 17;
+                    state.childrenAges[i] = val;
+                    triggerPending();
+                };
+
+                const unit = document.createElement('span');
+                unit.className = 'text-xs text-slate-500 font-bold';
+                unit.textContent = '歳';
+
+                inputContainer.appendChild(input);
+                inputContainer.appendChild(unit);
+                childDiv.appendChild(label);
+                childDiv.appendChild(inputContainer);
+                wrapper.appendChild(childDiv);
+            }
+        }
+
+        function triggerPending() {
+            state.isPending = true;
+            document.getElementById('pending-alert').style.display = 'flex';
+        }
+
+        // Helper to format age range strings dynamically with clear subjects
+        function getDynamicAgeRangeText(seg, userAge) {
+            const startElapsed = seg.startAge - userAge;
+            const endElapsed = seg.endAge - userAge;
+
+            if (state.scenario === 'disability') {
+                // Disability Scenario (高度障害) -> Subject is "You" (あなた)
+                if (seg.startAge >= 65) {
+                    return `あなたが 65歳〜生涯`;
+                }
+                return `あなたが ${seg.startAge}歳〜${seg.endAge}歳`;
+            } else {
+                // Death Scenario (死亡) -> Subject is Spouse or Children
+                if (state.hasSpouse) {
+                    const spouseStart = state.spouseAge + startElapsed;
+                    const spouseEnd = state.spouseAge + endElapsed;
+                    if (spouseStart >= 65) {
+                        return `配偶者が 65歳〜生涯`;
+                    }
+                    return `配偶者が ${spouseStart}歳〜${spouseEnd}歳`;
+                } else if (state.childrenCount > 0) {
+                    const child1Start = state.childrenAges[0] + startElapsed;
+                    const child1End = state.childrenAges[0] + endElapsed;
+                    if (child1Start >= 18) {
+                        return `お子様が 18歳（高校卒業）以降`;
+                    }
+                    return `お子様が ${child1Start}歳〜${child1End}歳`;
+                } else {
+                    return `万が一の発生から ${startElapsed}年目〜${endElapsed}年目`;
+                }
+            }
+        }
+
+        // --- CORE COMPUTING ENGINE ---
+        function calculateSimulation() {
+            state.isPending = false;
+            document.getElementById('pending-alert').style.display = 'none';
+
+            // Show Loading
+            const loader = document.getElementById('loading-overlay');
+            const empty = document.getElementById('empty-state');
+            const header = document.getElementById('result-header');
+            const recipientBanner = document.getElementById('recipient-banner');
+            const chartBox = document.getElementById('result-chart-box');
+            const timeline = document.getElementById('result-timeline');
+            const faqSection = document.getElementById('result-faq');
+
+            loader.classList.remove('hidden');
+            empty.classList.add('hidden');
+            header.classList.add('hidden');
+            recipientBanner.classList.add('hidden');
+            chartBox.classList.add('hidden');
+            timeline.classList.add('hidden');
+            faqSection.classList.add('hidden');
+
+            setTimeout(() => {
+                executeCalculationCore();
+                loader.classList.add('hidden');
+                header.classList.remove('hidden');
+                recipientBanner.classList.remove('hidden');
+                chartBox.classList.remove('hidden');
+                timeline.classList.remove('hidden');
+                faqSection.classList.remove('hidden'); // Show FAQ Area alongside results!
+            }, 800);
+        }
+
+        function executeCalculationCore() {
+            const nick = document.getElementById('user-name').value || 'あなた';
+            const userAge = parseInt(document.getElementById('user-age').value) || 40;
+            
+            let inputIncome = document.getElementById('user-income').value;
+            let finalIncome = 500;
+            if (inputIncome === "" || inputIncome === undefined) {
+                if (state.job === 'employee') finalIncome = 500;
+                else if (state.job === 'solo') finalIncome = 350;
+                else finalIncome = 700;
+            } else {
+                finalIncome = parseFloat(inputIncome);
+            }
+
+            renderFamilyPortrait(nick, userAge);
+            renderRecipientBanner(nick);
+
+            const projections = calculateTimelineAges(userAge, finalIncome);
+
+            drawFinancialChart(projections);
+            renderChronologicalCards(projections, userAge);
+        }
+
+        function renderFamilyPortrait(name, age) {
+            document.getElementById('res-username').textContent = name;
+            
+            let description = `${age}歳 `;
+            if (state.job === 'employee') description += '会社員・公務員';
+            else if (state.job === 'solo') description += '個人事業主';
+            else description += '法人役員';
+
+            let familyDesc = "";
+            if(state.hasSpouse && state.childrenCount > 0) {
+                familyDesc = `夫婦と子ども${state.childrenCount}人`;
+            } else if(state.hasSpouse) {
+                familyDesc = "夫婦ふたり";
+            } else if(state.childrenCount > 0) {
+                familyDesc = `シングル親と子ども${state.childrenCount}人`;
+            } else {
+                familyDesc = "単身世帯";
+            }
+            description += ` | ${familyDesc}`;
+            
+            document.getElementById('res-profile-desc').textContent = description;
+            document.getElementById('res-target-age').textContent = `もしも${age}歳で発生したら...`;
+
+            const wrapper = document.getElementById('portrait-avatar-wrapper');
+            wrapper.innerHTML = '';
+            
+            let iconsHtml = `<div class="flex -space-x-2 overflow-hidden">`;
+            iconsHtml += `<div class="inline-block h-8 w-8 rounded-full ring-2 ring-slate-900 bg-emerald-500 text-slate-900 flex items-center justify-center text-xs font-bold"><i class="fa-solid fa-user"></i></div>`;
+            if (state.hasSpouse) {
+                iconsHtml += `<div class="inline-block h-8 w-8 rounded-full ring-2 ring-slate-900 bg-rose-400 text-slate-900 flex items-center justify-center text-xs font-bold"><i class="fa-solid fa-user-tie"></i></div>`;
+            }
+            for(let i=0; i<state.childrenCount; i++) {
+                iconsHtml += `<div class="inline-block h-8 w-8 rounded-full ring-2 ring-slate-900 bg-amber-300 text-slate-900 flex items-center justify-center text-xs font-bold">${state.childrenAges[i]}</div>`;
+            }
+            iconsHtml += `</div>`;
+            wrapper.innerHTML = iconsHtml;
+        }
+
+        // --- CRITICAL RECIPIENT EXPLANATION BANNER ---
+        function renderRecipientBanner(name) {
+            const iconWrapper = document.getElementById('recipient-banner-icon');
+            const title = document.getElementById('recipient-banner-title');
+            const badge = document.getElementById('recipient-banner-badge');
+            const chartDesc = document.getElementById('chart-sub-desc');
+
+            if (state.scenario === 'disability') {
+                iconWrapper.innerHTML = `<i class="fa-solid fa-user-shield text-emerald-600"></i>`;
+                iconWrapper.className = "text-emerald-700 bg-emerald-100 rounded-full p-2 h-10 w-10 flex items-center justify-center text-lg";
+                title.innerHTML = `受給者：<span class="text-emerald-600 font-extrabold">${name}さん本人</span> が受け取ります`;
+                badge.textContent = "本人の生活サポート";
+                badge.className = "text-[10px] bg-emerald-600 text-white font-black px-2.5 py-1 rounded-full";
+                chartDesc.textContent = `もし働けなくなったとき、${name}さん本人が国から毎月受け取れる障害年金・手当の合計（万円）`;
+            } else {
+                iconWrapper.innerHTML = `<i class="fa-solid fa-people-roof text-rose-600"></i>`;
+                iconWrapper.className = "text-rose-700 bg-rose-100 rounded-full p-2 h-10 w-10 flex items-center justify-center text-lg";
+                
+                let receivers = "残された配偶者とお子様";
+                if (!state.hasSpouse && state.childrenCount > 0) receivers = "残されたお子様たち";
+                else if (state.hasSpouse && state.childrenCount === 0) receivers = "残された配偶者（パートナー）";
+                else if (!state.hasSpouse && state.childrenCount === 0) receivers = "指定された生計維持遺族";
+
+                title.innerHTML = `受給者：<span class="text-rose-600 font-extrabold">${receivers}</span> が受け取ります`;
+                badge.textContent = "ご遺族の生活維持";
+                badge.className = "text-[10px] bg-rose-600 text-white font-black px-2.5 py-1 rounded-full";
+                chartDesc.textContent = `もし他界されたとき、残された遺族が国から毎月受け取れる遺族年金・手当の合計（万円）`;
+            }
+        }
+
+        function calculateTimelineAges(startAge, income) {
+            let list = [];
+            const standardRetireAge = 65;
+            const endSimulationAge = 80;
+
+            for(let currentAge = startAge; currentAge <= endSimulationAge; currentAge++) {
+                const yearsElapsed = currentAge - startAge;
+                
+                let activeKidsCount = 0;
+                let child手当Total = 0;
+                let child加給Total = 0;
+
+                state.childrenAges.forEach(baseAge => {
+                    const currentChildAge = baseAge + yearsElapsed;
+                    if (currentChildAge < 18) {
+                        activeKidsCount++;
+                        child手当Total += 1.0; // 1万円 / 月
+                        child加給Total += 1.9; // 国の子の加算金
+                    }
+                });
+
+                let totalInflow = 0;
+                let breakdown = {
+                    basicSupport: 0,
+                    extraSupport: 0,
+                    childBenefit: 0,
+                };
+
+                const standardMonthlySalary = Math.round((income / 12) * 10) / 10;
+
+                // --- DYNAMIC METHOD ENGINE FOR NATIONAL POLICY RULES ---
+                const appliedPensionMonths = (state.job === 'solo') ? state.pensionMonths : Math.max(300, state.pensionMonths);
+
+                // Year 1 Immediate Relief (健康保険の傷病手当金)
+                if (yearsElapsed === 0 && state.scenario === 'disability') {
+                    if (state.job === 'employee') {
+                        breakdown.basicSupport = Math.round((standardMonthlySalary * 0.67) * 10) / 10;
+                    } else {
+                        breakdown.basicSupport = 0;
+                    }
+                    breakdown.childBenefit = child手当Total;
+                    totalInflow = Math.round((breakdown.basicSupport + breakdown.childBenefit) * 10) / 10;
+                } 
+                // Mid Life (Before 65)
+                else if (currentAge < standardRetireAge) {
+                    if (state.scenario === 'disability') {
+                        breakdown.basicSupport = 6.8; // 障害基礎2級ベース
+                        
+                        if (state.job === 'employee' || state.job === 'director') {
+                            let baseKosei = ((standardMonthlySalary * 0.005481 * appliedPensionMonths) / 12);
+                            if (baseKosei < 5.0) baseKosei = 5.0;
+                            breakdown.extraSupport += baseKosei;
+
+                            const currentSpouseAge = state.spouseAge + yearsElapsed;
+                            if (state.hasSpouse && currentSpouseAge < 65) {
+                                breakdown.extraSupport += 1.9; // 配偶者加給
+                            }
+                        }
+                        breakdown.extraSupport += child加給Total;
+                    } 
+                    else { // DEATH (遺族年金)
+                        if (activeKidsCount > 0) {
+                            breakdown.basicSupport = 6.8; // 遺族基礎年金
+                            breakdown.extraSupport += child加給Total;
+                        }
+
+                        if (appliedPensionMonths > 0) {
+                            let baseKosei = (((standardMonthlySalary * 0.005481 * appliedPensionMonths) / 12) * 0.75);
+                            
+                            if (state.job !== 'solo' && baseKosei < 4.0) {
+                                baseKosei = 4.0;
+                            }
+                            
+                            breakdown.extraSupport += baseKosei;
+
+                            // 中高齢寡婦加算 (Widow addition)
+                            const currentSpouseAge = state.spouseAge + yearsElapsed;
+                            if (state.gender === 'male' && state.hasSpouse && currentSpouseAge >= 40 && currentSpouseAge < 65 && activeKidsCount === 0) {
+                                breakdown.extraSupport += 5.1; // 中高齢寡婦加算
+                            }
+                        }
+                    }
+
+                    breakdown.childBenefit = child手当Total;
+                    totalInflow = Math.round((breakdown.basicSupport + breakdown.extraSupport + breakdown.childBenefit) * 10) / 10;
+                }
+                // Senior Era (65+)
+                else {
+                    if (state.scenario === 'disability') {
+                        breakdown.basicSupport = 6.8;
+                        if (state.job === 'employee' || state.job === 'director') {
+                            let baseKosei = ((standardMonthlySalary * 0.005481 * appliedPensionMonths) / 12);
+                            if (baseKosei < 5.0) baseKosei = 5.0;
+                            breakdown.extraSupport = baseKosei;
+                        }
+                    } else { // 遺族年金 65歳以降
+                        if (state.hasSpouse) {
+                            breakdown.basicSupport = 6.8; // 妻の老齢基礎年金
+                            if (appliedPensionMonths > 0) {
+                                let baseKosei = (((standardMonthlySalary * 0.005481 * appliedPensionMonths) / 12) * 0.75);
+                                if (state.job !== 'solo' && baseKosei < 4.0) baseKosei = 4.0;
+                                breakdown.extraSupport = baseKosei;
+                            }
+                        } else {
+                            breakdown.basicSupport = 0;
+                            breakdown.extraSupport = 0;
+                        }
+                    }
+                    breakdown.childBenefit = 0;
+                    totalInflow = Math.round((breakdown.basicSupport + breakdown.extraSupport) * 10) / 10;
+                }
+
+                // Strict rounding to avoid JavaScript precision issues
+                breakdown.basicSupport = Math.round(breakdown.basicSupport * 10) / 10;
+                breakdown.extraSupport = Math.round(breakdown.extraSupport * 10) / 10;
+                breakdown.childBenefit = Math.round(breakdown.childBenefit * 10) / 10;
+                totalInflow = Math.round(totalInflow * 10) / 10;
+
+                list.push({
+                    age: currentAge,
+                    yearsElapsed: yearsElapsed,
+                    inflow: totalInflow,
+                    breakdownIn: breakdown,
+                    activeKids: activeKidsCount,
+                    pensionMonths: appliedPensionMonths
+                });
+            }
+
+            return list;
+        }
+
+        // --- STAGE DETECTOR & SEGMENTER ---
+        function segmentProjections(projections) {
+            let segments = [];
+            if (projections.length === 0) return segments;
+
+            let currentSegment = {
+                startAge: projections[0].startAge || projections[0].age,
+                endAge: projections[0].age,
+                inflow: projections[0].inflow,
+                breakdownIn: JSON.parse(JSON.stringify(projections[0].breakdownIn)),
+                dataRef: projections[0]
+            };
+
+            for (let i = 1; i < projections.length; i++) {
+                const p = projections[i];
+                const prev = projections[i - 1];
+
+                const inflowChanged = Math.abs(p.inflow - prev.inflow) > 0.05;
+                const basicChanged = Math.abs(p.breakdownIn.basicSupport - prev.breakdownIn.basicSupport) > 0.05;
+                const extraChanged = Math.abs(p.breakdownIn.extraSupport - prev.breakdownIn.extraSupport) > 0.05;
+                const childBenefitChanged = Math.abs(p.breakdownIn.childBenefit - prev.breakdownIn.childBenefit) > 0.05;
+                const reached65 = (p.age === 65);
+
+                if (inflowChanged || basicChanged || extraChanged || childBenefitChanged || reached65) {
+                    currentSegment.endAge = prev.age;
+                    segments.push(currentSegment);
+
+                    currentSegment = {
+                        startAge: p.age,
+                        endAge: p.age,
+                        inflow: p.inflow,
+                        breakdownIn: JSON.parse(JSON.stringify(p.breakdownIn)),
+                        dataRef: p
+                    };
+                } else {
+                    currentSegment.endAge = p.age;
+                }
+            }
+            currentSegment.endAge = projections[projections.length - 1].age;
+            segments.push(currentSegment);
+
+            return segments;
+        }
+
+        // --- CHART ENGINE ---
+        function drawFinancialChart(data) {
+            const ctx = document.getElementById('balanceChart').getContext('2d');
+            if(chartInstance) {
+                chartInstance.destroy();
+            }
+
+            // DYNAMIC AXIS LABELS: Slip x-axis context entirely based on scenario & hasSpouse status!
+            const labels = data.map(d => {
+                if (state.scenario === 'disability') {
+                    return `${d.age}歳`;
+                } else {
+                    if (state.hasSpouse) {
+                        return `配偶者 ${state.spouseAge + d.yearsElapsed}歳`;
+                    } else if (state.childrenCount > 0) {
+                        return `子 ${state.childrenAges[0] + d.yearsElapsed}歳`;
+                    } else {
+                        return `${d.yearsElapsed}年目`;
+                    }
+                }
+            });
+            
+            const inflows = data.map(d => d.inflow);
+
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: '月間給付金額（収入）',
+                            data: inflows,
+                            borderColor: '#10b981',
+                            borderWidth: 4,
+                            backgroundColor: 'rgba(16, 185, 129, 0.08)',
+                            fill: true,
+                            tension: 0.1,
+                            pointBackgroundColor: '#10b981',
+                            pointHoverRadius: 6
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return '公的給付合計: ' + context.parsed.y.toFixed(1) + ' 万円 / 月';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { font: { size: 9 } } },
+                        y: { beginAtZero: true, title: { display: true, text: '（万円/月）', font: { size: 10 } }, ticks: { font: { size: 10 } } }
+                    }
+                }
+            });
+        }
+
+        // --- RENDER DYNAMIC CARDS ---
+        function renderChronologicalCards(data, userAge) {
+            const container = document.getElementById('timeline-cards');
+            container.innerHTML = '';
+
+            const segments = segmentProjections(data);
+
+            segments.forEach((seg, idx) => {
+                const cardDiv = document.createElement('div');
+                cardDiv.className = 'bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-sm space-y-4';
+                const mathDivId = `math-block-${idx}`;
+
+                const basic = parseFloat(seg.breakdownIn.basicSupport.toFixed(1));
+                const extra = parseFloat(seg.breakdownIn.extraSupport.toFixed(1));
+                const child = parseFloat(seg.breakdownIn.childBenefit.toFixed(1));
+                const total = parseFloat(seg.inflow.toFixed(1));
+
+                // --- CRITICAL VISUAL CHANGE: WHO IS RECIPIENT? ---
+                let recipientBadgeHtml = "";
+                let cardColorBorder = "border-slate-200";
+
+                const startElapsed = seg.startAge - userAge;
+                const spouseAgeAtStage = state.spouseAge + startElapsed;
+
+                if (state.scenario === 'disability') {
+                    cardColorBorder = "border-emerald-100 hover:border-emerald-300";
+                    recipientBadgeHtml = `
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-black bg-emerald-100 text-emerald-800">
+                            <i class="fa-solid fa-user-shield mr-1"></i>本人受給（${document.getElementById('user-name').value || 'あなた'}さん）
+                        </span>
+                    `;
+                } else {
+                    cardColorBorder = "border-rose-100 hover:border-rose-300";
+                    
+                    if (state.hasSpouse) {
+                        if (spouseAgeAtStage >= 65) {
+                            recipientBadgeHtml = `
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-black bg-rose-100 text-rose-800">
+                                    <i class="fa-solid fa-user mr-1"></i>遺族受給（配偶者老後：${spouseAgeAtStage}歳以降）
+                                </span>
+                            `;
+                        } else if (child > 0) {
+                            recipientBadgeHtml = `
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-black bg-rose-100 text-rose-800">
+                                    <i class="fa-solid fa-people-roof mr-1"></i>遺族受給（配偶者：${spouseAgeAtStage}歳〜 ＋ 子ども）
+                                </span>
+                            `;
+                        } else {
+                            recipientBadgeHtml = `
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-black bg-rose-100 text-rose-800">
+                                    <i class="fa-solid fa-user-check mr-1"></i>遺族受給（配偶者本人：${spouseAgeAtStage}歳〜）
+                                </span>
+                            `;
+                        }
+                    } else if (state.childrenCount > 0) {
+                        const child1AgeAtStage = state.childrenAges[0] + startElapsed;
+                        recipientBadgeHtml = `
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-black bg-rose-100 text-rose-800">
+                                <i class="fa-solid fa-child mr-1"></i>遺族受給（お子様：${child1AgeAtStage}歳〜）
+                            </span>
+                        `;
+                    } else {
+                        recipientBadgeHtml = `
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-black bg-rose-100 text-rose-800">
+                                <i class="fa-solid fa-ribbon mr-1"></i>受給対象のご遺族
+                            </span>
+                        `;
+                    }
+                }
+
+                // Add child benefit badge separately only if childrenCount > 0 and child benefits are positive at this stage
+                if (state.childrenCount > 0 && child > 0) {
+                    recipientBadgeHtml += `
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-800 ml-1.5">
+                            <i class="fa-solid fa-child mr-1"></i>児童手当（子ども宛）
+                        </span>
+                    `;
+                }
+
+                let icon = "fa-hospital";
+                let iconBg = "bg-red-500";
+                
+                if (idx === 0 && state.scenario === 'disability') {
+                    icon = "fa-ambulance";
+                    iconBg = "bg-red-500";
+                } else if (state.childrenCount > 0 && child > 0) {
+                    icon = "fa-graduation-cap";
+                    iconBg = "bg-amber-500";
+                } else if (seg.startAge >= 65) {
+                    icon = "fa-user-clock";
+                    iconBg = "bg-blue-600";
+                } else {
+                    icon = "fa-shield-heart";
+                    iconBg = "bg-emerald-600";
+                }
+
+                // Generate child benefit row HTML dynamically based on childrenCount
+                let childRowHtml = "";
+                if (state.childrenCount > 0) {
+                    childRowHtml = `<div class="text-[11px] text-slate-600 flex justify-between"><span>子ども手当（国からの児童手当）:</span><span class="font-bold">${child} 万円</span></div>`;
+                }
+
+                cardDiv.className = `bg-white border ${cardColorBorder} rounded-2xl p-4 sm:p-5 shadow-sm space-y-4 transition-all duration-300`;
+                cardDiv.innerHTML = `
+                    <div class="flex items-start justify-between gap-2">
+                        <div class="flex items-center space-x-3">
+                            <div class="${iconBg} text-white p-2.5 rounded-xl text-xs sm:text-sm w-10 h-10 flex items-center justify-center shadow-sm">
+                                <i class="fa-solid ${icon}"></i>
+                            </div>
+                            <div>
+                                <h4 class="text-xs sm:text-sm font-black text-slate-800">【第${idx+1}期】${getStageTitle(seg, idx)}</h4>
+                                <span class="text-[10px] text-slate-400 font-bold block mt-0.5">${getDynamicAgeRangeText(seg, userAge)}</span>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-[10px] text-slate-400 font-bold block">月々の受給額</span>
+                            <span class="text-sm sm:text-base font-black text-emerald-600">${total} 万円 / 月</span>
+                        </div>
+                    </div>
+
+                    <!-- Who receives the money badges -->
+                    <div class="flex flex-wrap gap-1.5 border-b border-slate-100 pb-2">
+                        ${recipientBadgeHtml}
+                    </div>
+
+                    <p class="text-xs text-slate-500 leading-relaxed">${getDynamicExplanation(seg, idx)}</p>
+
+                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 space-y-1">
+                        <span class="text-[10px] font-extrabold text-slate-500 block"><i class="fa-solid fa-arrow-turn-down mr-1 text-emerald-600"></i>公的保障の月額内訳</span>
+                        <div class="text-[11px] text-slate-600 flex justify-between"><span>基礎部分（障害基礎 / 遺族基礎年金）:</span><span class="font-bold">${basic} 万円</span></div>
+                        <div class="text-[11px] text-slate-600 flex justify-between"><span>加算・上乗せ（障害厚生 / 遺族厚生 / 各種加算）:</span><span class="font-bold">${extra} 万円</span></div>
+                        ${childRowHtml}
+                    </div>
+
+                    <div class="border-t border-slate-100 pt-3">
+                        <button type="button" onclick="toggleMathDetails('${mathDivId}')" class="text-xs text-slate-400 hover:text-emerald-600 flex items-center transition">
+                            <i class="fa-solid fa-calculator mr-1"></i> <span>この時期の法規定・計算式（数式）を見る</span>
+                        </button>
+                        <div id="${mathDivId}" class="hidden mt-3 p-3 bg-slate-900 text-slate-300 rounded-xl text-xs space-y-2 overflow-x-auto">
+                            <!-- Injected KaTeX formula -->
+                        </div>
+                    </div>
+                `;
+
+                container.appendChild(cardDiv);
+                injectKaTeXFormula(mathDivId, seg, idx);
+            });
+        }
+
+        function getStageTitle(seg, idx) {
+            const child = seg.breakdownIn.childBenefit;
+            const yearsElapsed = seg.startAge - parseInt(document.getElementById('user-age').value);
+
+            if (idx === 0 && yearsElapsed === 0 && state.scenario === 'disability') {
+                return "事故・病気の直後（傷病手当金期間）";
+            }
+            if (state.childrenCount > 0 && child > 0) {
+                return "子ども成長期（手当と加算がダブルでもらえる時期）";
+            }
+            if (seg.startAge >= 65) {
+                return "老後シニア期（本人の年金生活移行期）";
+            }
+            if (state.scenario === 'death' && state.gender === 'male' && state.hasSpouse) {
+                return "配偶者生活サポート期（中高齢寡婦加算期間）";
+            }
+            return "現役中堅期（ベース基礎＋厚生期間）";
+        }
+
+        function getDynamicExplanation(seg, idx) {
+            const basic = seg.breakdownIn.basicSupport;
+            const extra = seg.breakdownIn.extraSupport;
+            const child = seg.breakdownIn.childBenefit;
+            const yearsElapsed = seg.startAge - parseInt(document.getElementById('user-age').value);
+            const name = document.getElementById('user-name').value || 'あなた';
+            const spouseAgeAtStage = state.spouseAge + yearsElapsed;
+
+            if (state.scenario === 'disability') {
+                if (idx === 0 && yearsElapsed === 0) {
+                    if (state.job === 'employee') {
+                        let text = `働けなくなった当初の1年半は、健康保険から<strong>「傷病手当金」</strong>が支払われます。給料の約2/3（月額 ${basic}万円）が保障され、`;
+                        if (state.childrenCount > 0) {
+                            text += `高校生までのお子様には児童手当（月額 ${child}万円）も同時に受け取ることができます。これらはすべて<strong>${name}さん本人</strong>宛てに支給されます。`;
+                        } else {
+                            text += `リハビリや療養期間中の確実なセーフティネットとして<strong>${name}さん本人</strong>に支給されます。`;
+                        }
+                        return text;
+                    } else {
+                        let text = `個人事業主や法人役員の場合、健康保険の「傷病手当金」が出ないため、`;
+                        if (state.childrenCount > 0) {
+                            text += `この期間の月収は国からの児童手当（月額 ${child}万円）のみに急減します。`;
+                        } else {
+                            text += `この期間は公的保障からの定期給付が事実上ストップします。`;
+                        }
+                        text += `本人のリハビリ生活を支えるための貯蓄の準備がいかに重要かを示す期間です。`;
+                        return text;
+                    }
+                }
+                if (state.childrenCount > 0 && child > 0) {
+                    return `傷病手当金が終わり、本格的な「障害基礎年金」＋「障害厚生年金」がスタートします。お届けするお子様が高校を卒業するまでは、年金に「子どもの加算（月額1.9万円）」がつくほか、国から児童手当（月額1.0万円）がダブルで加算されるため、もっとも手厚い家族防衛期となります。すべて<strong>${name}さん本人の口座</strong>に支給されます。`;
+                }
+                if (seg.startAge >= 65) {
+                    if (state.job === 'solo') {
+                        return `65歳以降は子ども手当が完全に終了し、国からの「障害基礎年金（月額 ${basic}万円）」のみを<strong>${name}さん本人</strong>が生涯にわたり受け取ります。自営業者にとって、現役時代からの貯蓄切り崩しが重要になる時期です。`;
+                    } else {
+                        return `65歳以降はシニア向けの生涯受給へと移行します。現役時代から上乗せされていた「障害厚生年金（月額 ${extra}万円）」は、一生涯変わらず<strong>${name}さん本人</strong>に支給され続け、老後の生活を確実に守ります。`;
+                    }
+                }
+                if (state.childrenCount > 0) {
+                    return `子どもが18歳を越えて独立したあとの期間です。各種加算や児童手当は終了し、ご自身を支えるベースの障害年金（月額 ${seg.inflow}万円）が<strong>${name}さん本人</strong>に生涯支給されます。`;
+                } else {
+                    return `ご自身を支えるベースの障害年金（月額 ${seg.inflow}万円）が、生涯にわたり<strong>${name}さん本人</strong>に支給される期間です。`;
+                }
+            } 
+            else { // Death (遺族年金)
+                if (state.childrenCount > 0 && child > 0) {
+                    let desc = `大黒柱を失ったご家族（ご遺族）を支えるための期間です。遺族基礎年金に「子ども加算（月額1.9万円）」が上乗せされ、さらに「児童手当（月額1.0万円）」も合算されます。`;
+                    if (state.job === 'solo') {
+                        desc += ` さらに、生前に会社員として厚生年金に加入していた期間（${seg.dataRef.pensionMonths}ヶ月）に基づいた<strong>遺族厚生年金</strong>が上乗せされ、<strong>遺された配偶者とお子様</strong>宛に毎月合計 ${seg.inflow}万円が支給されます。`;
+                    } else {
+                        desc += ` さらに、会社員制度のみみなし300月保証が適用された遺族厚生年金が上乗せされ、<strong>残された配偶者とお子様</strong>宛に毎月合計 ${seg.inflow}万円が支給されます。`;
+                    }
+                    return desc;
+                }
+                if (seg.startAge >= 65) {
+                    return `遺された配偶者（パートナー）が65歳を迎え、配偶者自身の「老齢基礎年金（月額 ${basic}万円）」がもらえるようになります。そこに、旦那様（世帯主）が遺してくれた生涯もらえる「遺族厚生年金（月額 ${extra}万円）」が上乗せされ、<strong>配偶者本人の口座</strong>へダブルで受給することができます。`;
+                }
+                if (state.gender === 'male' && state.hasSpouse && extra > 4.0) {
+                    if (state.childrenCount > 0) {
+                        return `子どもが高校を卒業したため、遺族基礎年金や児童手当は終了します。しかし、<strong>遺された妻（現在${spouseAgeAtStage}歳）</strong>が40歳以上65歳未満の期間であるため、遺族厚生年金に自動的に<strong>『中高齢寡婦加算（月額5.1万円）』</strong>が加算され、急激な世帯収入の減少から妻の生活を守ります。`;
+                    } else {
+                        return `お子様がいらっしゃらない（またはすでに独立している）ため国の遺族基礎年金はありませんが、<strong>遺された妻（現在${spouseAgeAtStage}歳）</strong>が40歳以上65歳未満の期間であるため、遺族厚生年金に自動的に<strong>『中高齢寡婦加算（月額5.1万円）』</strong>が加算され、国が妻の生活をしっかりとサポートします。`;
+                    }
+                }
+                
+                if (state.childrenCount > 0) {
+                    return `子どもが高校を卒業し、<strong>残された配偶者（パートナー）</strong>へ、旦那様が遺してくれた厚生年金（月額 ${seg.inflow}万円）のみが支給される期間です。`;
+                } else {
+                    return `<strong>残された配偶者（パートナー）</strong>へ、亡くなられた旦那様が遺してくれた遺族厚生年金（月額 ${seg.inflow}万円）が毎月支給される期間です。`;
+                }
+            }
+        }
+
+        // --- KaTeX FORMULA COMPILER (ZURE BANISHING ENGINE WITH DYNAMIC MONTHS) ---
+        function injectKaTeXFormula(divId, seg, idx) {
+            const block = document.getElementById(divId);
+            const d = seg.dataRef;
+            
+            let formulaHtml = `<h5 class="font-bold text-slate-100 border-b border-slate-700 pb-1 mb-2"><i class="fa-solid fa-gears"></i> 公的支援金額の計算根拠</h5>`;
+            
+            let inputIncome = document.getElementById('user-income').value;
+            let finalIncome = 500;
+            if (inputIncome !== "" && inputIncome !== undefined) {
+                finalIncome = parseFloat(inputIncome);
+            } else {
+                if (state.job === 'employee') finalIncome = 500;
+                else if (state.job === 'solo') finalIncome = 350;
+                else finalIncome = 700;
+            }
+            const standardMonthlySalary = Math.round((finalIncome / 12) * 10) / 10;
+            const yearsElapsed = seg.startAge - parseInt(document.getElementById('user-age').value);
+
+            try {
+                if (idx === 0 && yearsElapsed === 0 && state.scenario === 'disability') {
+                    if (state.job === 'employee') {
+                        formulaHtml += `<p class="mb-1 text-slate-400">標準報酬月額（給料）の2/3を支給する傷病手当金：</p>`;
+                        const mathStr = katex.renderToString(
+                            `\\text{傷病手当金(本人宛)} = \\text{標準報酬月額} \\times \\frac{2}{3} = ${standardMonthlySalary} \\text{万円} \\times 0.67 \\approx ${d.breakdownIn.basicSupport.toFixed(1)} \\text{万円/月}`
+                        );
+                        formulaHtml += `<div class="my-2 py-1 text-center bg-slate-800 rounded">${mathStr}</div>`;
+                    } else {
+                        formulaHtml += `<p class="text-rose-400">自営業者は傷病手当金の対象外（支給額 = 0円）</p>`;
+                    }
+                } 
+                else if (seg.startAge >= 65) {
+                    formulaHtml += `<p class="mb-1 text-slate-400">65歳以降の老齢年金・遺族厚生上乗せ合計：</p>`;
+                    const mathStr = katex.renderToString(
+                        `\\text{受給月額} = \\text{基礎年金}(${d.breakdownIn.basicSupport.toFixed(1)}\\text{万}) + \\text{厚生年金分}(${d.breakdownIn.extraSupport.toFixed(1)}\\text{万}) = ${d.inflow.toFixed(1)} \\text{万円/月}`
+                    );
+                    formulaHtml += `<div class="my-2 py-1 text-center bg-slate-800 rounded">${mathStr}</div>`;
+                }
+                else {
+                    formulaHtml += `<p class="mb-1 text-slate-400">基礎部分 ＋ 厚生比例年金 ＋ 各種加算（1円単位で実データを100%完全同期）：</p>`;
+                    
+                    const mathStr1 = katex.renderToString(
+                        `\\text{基礎保障(障害/遺族基礎)} = ${d.breakdownIn.basicSupport.toFixed(1)} \\text{万円/月}`
+                    );
+                    
+                    // --- ARITHMETIC INTEGRITY BACK-CALCULATION ---
+                    let totalExtra = d.breakdownIn.extraSupport;
+                    let widowAdd = 0;
+                    let childAdd = d.activeKids * 1.9;
+                    
+                    if (state.scenario === 'death' && state.gender === 'male' && state.hasSpouse && d.activeKids === 0 && d.age < 65 && d.age >= 40) {
+                        widowAdd = 5.1; // 中高齢寡婦加算
+                    } else if (state.scenario === 'disability' && state.hasSpouse && (state.spouseAge + d.yearsElapsed) < 65) {
+                        if (state.job === 'employee' || state.job === 'director') {
+                            widowAdd = 1.9; // 配偶者加給
+                        }
+                    }
+
+                    let activeKoseiVal = parseFloat((totalExtra - widowAdd - childAdd).toFixed(1));
+                    if (activeKoseiVal < 0) activeKoseiVal = 0;
+
+                    let baseFormulaStr = `\\frac{\\text{標準月額} \\times 0.5481\\% \\times \\text{加入期間}(${d.pensionMonths}月)}{12}`;
+                    if (state.scenario === 'death') {
+                        baseFormulaStr += ` \\times 0.75`;
+                    }
+                    
+                    let baseKoseiMath = `\\text{厚生比例部分} = ${baseFormulaStr} \\approx ${activeKoseiVal.toFixed(1)}\\text{万}`;
+                    
+                    let subAdditions = `\\text{厚生上乗せ・加算の総計} = ${activeKoseiVal.toFixed(1)}\\text{万}`;
+                    if (childAdd > 0) {
+                        subAdditions += ` + 1.9\\text{万} \\times \\text{子}(${d.activeKids}人)`;
+                    }
+                    if (widowAdd > 0) {
+                        if (state.scenario === 'death') {
+                            subAdditions += ` + 5.1\\text{万} (\\text{中高齢寡婦加算})`;
+                        } else {
+                            subAdditions += ` + 1.9\\text{万} (\\text{配偶者加給})`;
+                        }
+                    }
+                    subAdditions += ` = ${totalExtra.toFixed(1)}\\text{万}`;
+
+                    const mathStr2 = katex.renderToString(baseKoseiMath);
+                    const mathStr3 = katex.renderToString(subAdditions);
+                    formulaHtml += `<div class="my-2 py-2 text-center bg-slate-800 rounded space-y-1.5">${mathStr1}<br>${mathStr2}<br>${mathStr3}</div>`;
+                    
+                    if (state.job === 'solo') {
+                        formulaHtml += `<p class="text-[9px] text-amber-400">※自営業者死亡のため、300ヶ月床上げ保証は適用されず、設定された過去の会社員期間（${state.pensionMonths}ヶ月）で正確に遺族厚生年金を算出しています。</p>`;
+                    } else if (d.pensionMonths === 300 && state.pensionMonths < 300) {
+                        formulaHtml += `<p class="text-[9px] text-amber-400">※実際の加入期間（${state.pensionMonths}月）が25年に満たないため、みなし300月保証を適用しています。</p>`;
+                    }
+                }
+
+                if (state.childrenCount > 0 && d.breakdownIn.childBenefit > 0) {
+                    formulaHtml += `<p class="mt-2 mb-1 text-slate-400 border-t border-slate-800 pt-2"><i class="fa-solid fa-child text-emerald-500"></i> 最新の児童手当（子ども手当て）規定：</p>`;
+                    const mathChild = katex.renderToString(
+                        `\\text{児童手当} = 1.0 \\text{万円} \\times \\text{高校生以下のお子様}(${d.activeKids}人) = ${d.breakdownIn.childBenefit.toFixed(1)} \\text{万円/月}`
+                    );
+                    formulaHtml += `<div class="my-1 py-1 text-center bg-slate-800 rounded">${mathChild}</div>`;
+                }
+
+            } catch (err) {
+                formulaHtml += `<p class="text-rose-400">数式エンジンの表示に失敗しました。詳細：[基礎: ${d.breakdownIn.basicSupport}万, 厚生: ${d.breakdownIn.extraSupport}万]</p>`;
+            }
+
+            block.innerHTML = formulaHtml;
+        }
+
+    </script>
+</body>
+</html>
